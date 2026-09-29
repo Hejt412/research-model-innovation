@@ -59,6 +59,7 @@ evals/            离线科研任务样本（合成资料）
 | `analyze_models.py` | 用 AST 定位模型候选、方法及模块赋值 |
 | `compare_models.py` | 比较两份静态模型报告 |
 | `extract_experiment_config.py` | 提取实验配置的源码证据 |
+| `trace_config.py` | 对照明确工厂的参数传递、构造默认值与声明配置 |
 | `experiment_manifest.py` | 冻结源码/有效配置，标出单变量声明以外的变化 |
 | `import_results.py` | 导入用户 CSV，按 seed 配对、检查来源并追加历史 |
 | `literature_ledger.py` | 文献去重、版本归组、主张证据检查及增量检索计划 |
@@ -67,6 +68,10 @@ evals/            离线科研任务样本（合成资料）
 模型比较支持本地传递依赖、外部辅助函数变化以及两个指定模型的直接比较。未核验的依赖会明确标记，不将类源码未变等同于模型行为等价。
 
 支持自定义 `--import-root` 分析 src 布局，并展开可解析的本地单继承组件。结果导入核对完整 task × required metric × seed，能识别整个任务或指标都未提交的情况。配置校验区分缺失、unknown、类型错误及明确停用；数据计划缺失/冲突不会被当作协议已确认。详见 [协议规范](references/protocol_contract.md)。
+
+组件证据保留条件分支及赋值来源。manifest 单独检查源码冻结覆盖与关键依赖，few-shot 清单核对类别和 N-way/K-shot/query/episode 数量。可选的 [配对统计](references/statistical_decisions.md) 按预声明阈值给出探索性区间，证据不足时保持未判定。
+
+[参数追踪](references/config_flow.md) 不执行项目；另附 assets/verify_instance.py 供用户在审阅后的环境自行核验实例。该脚本会导入用户选定的工厂，不属于 Codex 自动静态检查流程。
 
 实验、结果及文献命令详见 [证据工具说明](references/evidence_tools.md)。缺口分析按观测证据分档，机制归因考虑容量/计算预算等竞争解释，见 [缺口优先级与机制验证](references/gap_validation.md)。
 

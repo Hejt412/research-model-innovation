@@ -46,6 +46,7 @@ def compare(old, new):
             'right_inheritance': new.get('inheritance', {'status': 'not_available'}),
             'effective_component_evidence': {'left': old.get('effective_assignments', old['assignments']),
                                              'right': new.get('effective_assignments', new['assignments'])},
+            'assignment_evidence_changed': old.get('effective_assignments', old['assignments']) != new.get('effective_assignments', new['assignments']),
             'assignments_shared': sorted(x & y), 'left_methods': old['methods'], 'right_methods': new['methods'],
             'architecture_evidence': {'left': architecture_evidence(old), 'right': architecture_evidence(new)},
             'training_protocol': 'not established by model source; compare experiment manifests',
@@ -59,7 +60,9 @@ def architecture_evidence(model):
              'branches_fusion': ('branch', 'fusion', 'cat(', 'concat', 'gate', 'attention'),
              'normalization': ('norm',), 'classifier': ('classifier', 'head', 'prototype', 'linear'),
              'loss': ('loss', 'criterion', 'cross_entropy')}
-    evidence = [{'line': item['line'], 'expression': item['target'] + ' = ' + str(item['expression'])}
+    evidence = [{'line': item['line'], 'expression': item['target'] + ' = ' + str(item['expression']),
+                 'guards': item.get('guards', []), 'origin': item.get('origin', model['file']),
+                 'method': item.get('method'), 'runtime_value_verified': False}
                 for item in model.get('effective_assignments', model['assignments'])]
     for method in model.get('effective_methods', model['methods']):
         evidence.extend({'line': call['line'], 'expression': call['call']}

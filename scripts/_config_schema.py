@@ -1,5 +1,6 @@
 """Dependency-free validation of the normalized research config contract."""
 import math
+from _paired_statistics import validate_statistics
 
 UNKNOWN = {'state': 'unknown'}
 NULLABLE = {'/training/scheduler', '/training/augmentation', '/data/episode_plan_sha256'}
@@ -94,6 +95,10 @@ def validate_config(config):
                     primary += 1
                     if metric.get('required') is not True:
                         invalid(where, 'primary metrics must be required')
+                if 'min_improvement' in metric:
+                    threshold = metric['min_improvement']
+                    if type(threshold) not in (int, float) or not math.isfinite(threshold) or threshold < 0:
+                        invalid(where + '/min_improvement', 'finite nonnegative absolute improvement in the declared metric unit required')
             if len(names) != len(set(names)):
                 invalid(path, 'metric names must be unique')
             if not primary:
@@ -108,6 +113,15 @@ def validate_config(config):
                 good = good and type(value) is int
             if not good:
                 invalid(path, 'positive finite number required; epochs/batch_size must be integers')
+    present, stats = get_path(config, '/evaluation/statistics')
+    if present and stats is not None and stats != UNKNOWN:
+        for reason in validate_statistics(stats):
+            invalid('/evaluation/statistics', reason)
+        _, metrics = get_path(config, '/evaluation/metrics')
+        if isinstance(metrics, list):
+            for i, metric in enumerate(metrics):
+                if isinstance(metric, dict) and 'min_improvement' not in metric:
+                    result['missing'].append('/evaluation/metrics/' + str(i) + '/min_improvement')
     result['complete'] = not (result['missing'] or result['unknown'] or result['invalid'])
     return result
 

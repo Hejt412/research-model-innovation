@@ -76,12 +76,14 @@ def enrich(rows, trees, import_roots):
             if not has_super:
                 inherited_assignments = []
                 status = 'unverified_constructor_without_super'
-        assignments = {a['target']: {**a, 'origin': a.get('origin', ancestors[0] if ancestors else '')}
-                       for a in inherited_assignments}
-        assignments.update({a['target']: {**a, 'origin': row['file'] + '::' + row['class']} for a in row['assignments']})
+        # Do not collapse by target: alternate branches and later mutations are
+        # distinct evidence. Source order is not a proven final instance value.
+        assignments = [{**a, 'origin': a.get('origin', ancestors[0] if ancestors else '')}
+                       for a in inherited_assignments]
+        assignments.extend({**a, 'origin': row['file'] + '::' + row['class']} for a in row['assignments'])
         methods = {m['name']: m for m in inherited_methods}
         methods.update({m['name']: {**m, 'origin': row['file'] + '::' + row['class']} for m in row['methods']})
-        row['effective_assignments'] = list(assignments.values())
+        row['effective_assignments'] = assignments
         row['effective_methods'] = list(methods.values())
         row['inheritance'] = {'status': status, 'ancestors': list(dict.fromkeys(ancestors)), 'unresolved_bases': unknown,
                               'limitation': 'Textual inheritance evidence only; dynamic construction, deletion and conditional super calls are not executed.'}

@@ -25,9 +25,10 @@ def config():
 def data_plan():
     return {'schema_version': 1, 'mode': 'episodic', 'samples': [
         {'sample_id': 's1', 'record_id': 'r1', 'device_id': 'd1', 'split': 'train'},
-        {'sample_id': 's2', 'record_id': 'r2', 'device_id': 'd2', 'split': 'test'},
-        {'sample_id': 's3', 'record_id': 'r3', 'device_id': 'd2', 'split': 'test'},
-        {'sample_id': 's4', 'record_id': 'r4', 'device_id': 'd2', 'split': 'test'}],
+        {'sample_id': 's2', 'record_id': 'r2', 'device_id': 'd2', 'split': 'test', 'class_id': 'c1'},
+        {'sample_id': 's3', 'record_id': 'r3', 'device_id': 'd2', 'split': 'test', 'class_id': 'c1'},
+        {'sample_id': 's4', 'record_id': 'r4', 'device_id': 'd2', 'split': 'test', 'class_id': 'c1'}],
+        'few_shot': {task: {'n_way': 1, 'k_shot': 1, 'query_per_class': 2, 'episodes_per_seed': 1} for task in ['A-to-B', 'A-to-C']},
         'policy': {'split_disjoint_by': ['sample_id', 'record_id', 'device_id'],
                    'support_query_disjoint_by': ['sample_id', 'record_id'],
                    'task_splits': {task: {'support': ['test'], 'query': ['test']} for task in ['A-to-B', 'A-to-C']}},

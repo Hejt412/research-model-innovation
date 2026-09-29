@@ -6,6 +6,7 @@ from _static import emit, inventory
 from _records import changes, manifest, read_json, seal
 from _config_schema import evaluation_plan, validate_config
 from data_protocol import inspect_plan
+from _source_coverage import coverage, compare_coverage
 
 
 def unresolved_paths(value, path=''):
@@ -13,14 +14,20 @@ def unresolved_paths(value, path=''):
     return sorted(set(report['missing'] + report['unknown'] + [item['path'] for item in report['invalid']]))
 
 
-def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None):
+def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None, *, required_files=(), max_bytes=2_000_000, exclude_dirs=()):
     config = read_json(config_path)
     if not isinstance(config, dict) or not config:
         raise ValueError('Provide a nonempty, reviewed effective config as a JSON object')
     validation = validate_config(config)
     if validation['invalid']:
         raise ValueError('Invalid config fields: ' + str(validation['invalid']))
-    root, paths, skipped, errors = inventory(root)
+    root, paths, skipped, errors = inventory(root, max_bytes, exclude_dirs)
+    required = []
+    for name in required_files:
+        path = (root / name).resolve()
+        if not path.is_relative_to(root) or path == root:
+            raise ValueError('Required files must be inside the scan root')
+        required.append(path.relative_to(root).as_posix())
     if errors:
         raise ValueError('Cannot freeze a manifest with unreadable files: ' + str(errors))
     files = {}
@@ -42,14 +49,19 @@ def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None):
                 data_report['issues'].append({'kind': 'missing_task_seed_episodes', 'task': task, 'seed': seed})
             for task, seed in sorted(observed_pairs - wanted_pairs):
                 data_report['issues'].append({'kind': 'unplanned_task_seed_episodes', 'task': task, 'seed': seed})
-        data_report['status'] = 'protocol_conflicts' if data_report['issues'] else 'declared_plan_consistent'
-    return seal({'schema_version': 1, 'kind': 'experiment_manifest', 'experiment_id': experiment_id,
+        if data_report['issues']:
+            data_report['status'] = 'protocol_conflicts'
+    record = {'schema_version': 1, 'kind': 'experiment_manifest', 'experiment_id': experiment_id,
                  'control_id': control_id, 'config': config, 'files': files, 'skipped': skipped,
                  'unresolved_config_paths': unresolved_paths(config),
                  'config_validation': validation,
                  'data_protocol': data_report,
                  'coverage': 'Python and text configs under root; no binary data/notebooks/runtime validation',
-                 'effective_config_verified_at_runtime': False})
+                 'effective_config_verified_at_runtime': False,
+                 'source_scope': {'required_files': sorted(set(required)), 'max_bytes': max_bytes,
+                                  'exclude_dirs': sorted(set(exclude_dirs))}}
+    record['source_coverage'] = coverage(record)
+    return seal(record)
 
 
 def audit(before, after, factor, config_paths, allowed_files):
@@ -69,6 +81,7 @@ def audit(before, after, factor, config_paths, allowed_files):
     left_data, right_data = before.get('data_protocol'), after.get('data_protocol')
     data_status = ('not_supplied' if not left_data or not right_data else
                    'protocol_conflicts' if left_data['issues'] or right_data['issues'] else
+                   'few_shot_unverified' if any(d.get('mode') == 'episodic' and d.get('few_shot', {}).get('status') != 'declared_counts_consistent' for d in (left_data, right_data)) else
                    'declared_plan_changed' if left_data['plan_sha256'] != right_data['plan_sha256'] else 'same_declared_plan')
     return {'schema_version': 1, 'kind': 'experiment_audit', 'status': status, 'factor': factor,
             'control_sha256': before['manifest_sha256'], 'experiment_sha256': after['manifest_sha256'],
@@ -79,6 +92,7 @@ def audit(before, after, factor, config_paths, allowed_files):
                                         'experiment': unresolved_paths(after['config'])},
             'config_validation': {'control': validate_config(before['config']), 'experiment': validate_config(after['config'])},
             'data_protocol_status': data_status,
+            'source_coverage': compare_coverage(before, after),
             'skipped': {'control': before['skipped'], 'experiment': after['skipped']},
             'single_factor_causality_verified': False,
             'review_required': 'Review the actual diff: one allowed file can contain multiple independent changes. '
@@ -94,6 +108,9 @@ def main():
     snap.add_argument('--experiment-id', required=True)
     snap.add_argument('--control-id')
     snap.add_argument('--data-plan', type=Path, help='Sample split and episode JSON; metadata only')
+    snap.add_argument('--required-file', action='append', default=[], help='Reviewed critical entrypoint/dependency, relative to root; repeatable')
+    snap.add_argument('--max-bytes', type=int, default=2_000_000)
+    snap.add_argument('--exclude-dir', action='append', default=[])
     snap.add_argument('--out', type=Path, required=True)
     check = commands.add_parser('check')
     check.add_argument('control', type=Path)
@@ -107,14 +124,17 @@ def main():
         if args.command == 'snapshot':
             if args.out.resolve().is_relative_to(args.root.resolve()):
                 raise ValueError('Store manifests outside the scanned project root to avoid self-inclusion')
-            result = snapshot(args.root, args.config, args.experiment_id, args.control_id, args.data_plan)
+            result = snapshot(args.root, args.config, args.experiment_id, args.control_id, args.data_plan,
+                              required_files=args.required_file, max_bytes=args.max_bytes, exclude_dirs=args.exclude_dir)
         else:
             result = audit(manifest(args.control), manifest(args.experiment), args.factor,
                            args.allow_config, args.allow_file)
         emit(result, args.out)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         p.error(str(exc))
-    if result.get('status') in {'extra_changes_detected', 'no_change_detected'} or result.get('data_protocol_status') in {'protocol_conflicts', 'declared_plan_changed'}:
+    if (result.get('status') in {'extra_changes_detected', 'no_change_detected'} or
+        result.get('data_protocol_status') in {'protocol_conflicts', 'declared_plan_changed', 'few_shot_unverified'} or
+        result.get('source_coverage', {}).get('status') != 'complete_in_declared_scope'):
         raise SystemExit(2)
 
 

@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 from _records import fingerprint, read_json
 from _static import emit
+from _few_shot import inspect_few_shot
 
 FIELDS = {'sample_id', 'record_id', 'device_id'}
 
@@ -11,6 +12,8 @@ FIELDS = {'sample_id', 'record_id', 'device_id'}
 def inspect_plan(plan):
     if not isinstance(plan, dict) or plan.get('schema_version') != 1:
         raise ValueError('Expected data plan schema_version=1')
+    if any(key in plan for key in ('n_way', 'k_shot', 'query_per_class', 'episodes_per_seed')):
+        raise ValueError('Place few-shot cardinalities in few_shot[task], not at the top level')
     if not isinstance(plan.get('samples'), list) or not plan['samples']:
         raise ValueError('samples must be a nonempty list')
     if not isinstance(plan.get('episodes'), list):
@@ -77,13 +80,17 @@ def inspect_plan(plan):
             right = {samples[key][field] for key in episode['query']}
             if left & right:
                 issues.append({'kind': 'support_query_overlap', 'field': field, 'episode': list(identity), 'groups': sorted(left & right)})
+    few_shot = inspect_few_shot(plan, samples)
+    issues.extend(few_shot['issues'])
     normalized = {'schema_version': 1, 'mode': plan['mode'], 'samples': sorted(plan['samples'], key=lambda s: s['sample_id']),
                   'episodes': plan['episodes'], 'policy': {**policy, 'split_disjoint_by': disjoint,
-                                                         'support_query_disjoint_by': pair_disjoint}}
+                                                         'support_query_disjoint_by': pair_disjoint},
+                  'few_shot': plan.get('few_shot')}
     return {'schema_version': 1, 'kind': 'data_protocol_report', 'mode': plan['mode'], 'plan_sha256': fingerprint(normalized),
             'split_sha256': fingerprint(normalized['samples']), 'episodes_sha256': fingerprint(plan['episodes']),
             'policy_sha256': fingerprint(normalized['policy']), 'issues': issues,
-            'status': 'declared_plan_consistent' if not issues else 'protocol_conflicts',
+            'few_shot': few_shot, 'few_shot_sha256': fingerprint(normalized['few_shot']),
+            'status': ('protocol_conflicts' if issues else 'incomplete_specification' if few_shot['status'].startswith('unverified') else 'declared_plan_consistent'),
             'sample_count': len(samples), 'episode_count': len(plan['episodes']),
             'task_seed_counts': [{'task': task, 'seed': seed, 'count': count} for (task, seed), count in sorted(task_seed_counts.items())],
             'verified_data_bytes': False,
@@ -94,7 +101,7 @@ def inspect_plan(plan):
 
 def compare_plans(left, right):
     a, b = inspect_plan(left), inspect_plan(right)
-    fields = ('split_sha256', 'episodes_sha256', 'policy_sha256')
+    fields = ('split_sha256', 'episodes_sha256', 'policy_sha256', 'few_shot_sha256')
     return {'schema_version': 1, 'kind': 'data_protocol_comparison',
             'equal_declared_plan': a['plan_sha256'] == b['plan_sha256'],
             'changed_components': [key for key in fields if a[key] != b[key]],
@@ -117,8 +124,8 @@ def main():
         emit(result, args.out)
     except (ValueError, OSError, TypeError, KeyError) as exc:
         p.error(str(exc))
-    conflict = result.get('issues') or (args.command == 'compare' and
-                (not result['equal_declared_plan'] or result['control']['issues'] or result['experiment']['issues']))
+    conflict = result.get('issues') or result.get('status') == 'incomplete_specification' or (args.command == 'compare' and
+                (not result['equal_declared_plan'] or any(r['status'] != 'declared_plan_consistent' for r in (result['control'], result['experiment']))))
     if conflict:
         raise SystemExit(2)
 

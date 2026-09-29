@@ -10,6 +10,7 @@ from _records import fingerprint, manifest, read_json
 from _static import emit
 from experiment_manifest import audit
 from _config_schema import evaluation_plan, validate_config
+from _paired_statistics import assess
 
 
 def summarize(csv_path, control, experiment, audit_record):
@@ -103,6 +104,24 @@ def summarize(csv_path, control, experiment, audit_record):
                        'mean_delta': statistics.mean(deltas) if deltas else None,
                        'sample_sd_delta': statistics.stdev(deltas) if len(deltas) > 1 else None,
                        'ci': None, 'decision': 'interpret_against_predeclared_metric_direction_and_threshold'})
+    eligible = bool(complete and not config_incomplete and expected['status'] == 'within_declared_scope'
+                    and expected['data_protocol_status'] == 'same_declared_plan'
+                    and expected['source_coverage']['status'] == 'complete_in_declared_scope')
+    stats_a = control['config'].get('evaluation', {}).get('statistics')
+    stats_b = experiment['config'].get('evaluation', {}).get('statistics')
+    for group in output:
+        name = group['metric']
+        metric_a = plans[control['experiment_id']]['metrics'].get(name, {})
+        metric_b = plans[experiment['experiment_id']]['metrics'].get(name, {})
+        declaration_equal = stats_a == stats_b and metric_a == metric_b
+        if stats_a == {'state': 'unknown'} or stats_b == {'state': 'unknown'}:
+            stats = None
+        else:
+            stats = stats_a or stats_b
+        assessment = assess([pair['delta_experiment_minus_control'] for pair in group['pairs']], metric_a or metric_b,
+                            stats, eligible and declaration_equal)
+        group.update({'statistics': assessment, 'ci': assessment['ci'], 'decision': assessment['decision'],
+                      'direction': metric_a.get('direction'), 'min_improvement': metric_a.get('min_improvement')})
     return {'schema_version': 1, 'kind': 'observed_result_summary',
             'control_id': control['experiment_id'], 'experiment_id': experiment['experiment_id'],
             'control_sha256': control['manifest_sha256'], 'experiment_sha256': experiment['manifest_sha256'],
@@ -115,7 +134,7 @@ def summarize(csv_path, control, experiment, audit_record):
                          'missing_tasks': missing_tasks, 'missing_metrics': missing_metrics, 'missing_task_metric_groups': missing_groups},
             'seed_plan_verified_against_declared_config': all(plan is not None for plan in seed_plans.values()),
             'data_protocol_status': expected['data_protocol_status'],
-            'interpretation_status': 'review_required' if complete and not config_incomplete and expected['status'] == 'within_declared_scope' and expected['data_protocol_status'] == 'same_declared_plan'
+            'interpretation_status': 'review_required' if eligible
                                      else 'incomplete_or_confounded',
             'evidence_status': 'user_supplied_observations_not_independently_reproduced',
             'mechanism_benefit_proven': False}

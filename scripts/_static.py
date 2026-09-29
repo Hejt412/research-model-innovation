@@ -9,6 +9,7 @@ import sys
 import tokenize
 from _dependencies import build_graph, dependencies
 from _inheritance import enrich
+from _conditions import guarded_nodes
 
 SCHEMA = 2
 SKIP = {'.git', '.hg', '.svn', '.venv', 'venv', 'env', '__pycache__',
@@ -53,9 +54,10 @@ def inventory(root, max_bytes=2_000_000, exclude_dirs=()):
         kept = []
         for name in sorted(dirs):
             path = Path(base) / name
-            if name in excluded or path.is_symlink() or path.is_junction():
+            linked = path.is_symlink() or path.is_junction()
+            if name in excluded or linked:
                 skipped.append({'path': path.relative_to(root).as_posix(),
-                                'reason': 'excluded_directory_or_link'})
+                                'reason': 'directory_link' if linked else 'excluded_directory'})
             else:
                 kept.append(name)
         dirs[:] = kept
@@ -148,13 +150,14 @@ def models(path, relative=None, include_all=False):
                 'calls_in_source_order': [{'line': n.lineno, 'call': expr(n)} for n in calls],
                 'returns': [{'line': n.lineno, 'expression': expr(n.value)}
                             for n in scope_nodes(method) if isinstance(n, ast.Return)]})
-            for item in scope_nodes(method):
+            for item, guards in guarded_nodes(method):
                 targets = item.targets if isinstance(item, ast.Assign) else (
                     [item.target] if isinstance(item, ast.AnnAssign) else [])
                 for target in targets:
                     if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == 'self':
                         assignments.append({'line': item.lineno, 'target': expr(target),
-                                            'expression': expr(item.value)})
+                                            'expression': expr(item.value), 'method': method.name,
+                                            'guards': guards, 'runtime_value_verified': False})
         normalized = ast.dump(node, include_attributes=False)
         result.append({'file': relative or str(path), 'class': node.name,
                        'line': node.lineno, 'end_line': node.end_lineno,

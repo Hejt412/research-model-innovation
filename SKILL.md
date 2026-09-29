@@ -25,6 +25,8 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 
 扫描前确定范围，排除测试、临时第三方副本和无关结果目录。沿真实入口追踪模型工厂、参数转发、构造默认值及条件分支，分别记录声明配置与有效配置；不能按文件名或静态赋值推定实际启用的组件。引用历史性能前核对当时源码及依赖指纹，无法对应当前版本时保留归因未知。
 
+条件分支的赋值证据应保留各自守卫及来源，不以最后一条源码赋值当运行时结果。参数疑点可用 [参数传递核对](references/config_flow.md) 生成静态对照；实例核验脚本仅交由用户在审阅过的环境运行。
+
 输出模型比较及 Innovation Gap Map：模块、现有实现、代码证据、潜在问题、已有实验证据、可证伪问题。按 [缺口优先级与机制验证](references/gap_validation.md) 区分已观测问题与结构猜测，优先补最小诊断证据。暂不填入随意推荐的模块。不同模型可显式选择比较；类源码未变不代表依赖或模型行为未变。
 
 ## 阶段 2：跨领域发现与机制迁移
@@ -50,6 +52,8 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 按 [实验规则](references/experiment_rules.md) 给出 E0 与 E1、冻结配置、用户运行命令、判定标准及消融。检查实现时限于静态检查及确认不会触发训练的测试，不加载未知训练入口。参数/FLOPs/性能未测即写待测。
 
 用实验 manifest 保存经核对的有效配置和源码指纹；按 [协议规范](references/protocol_contract.md) 区分必填缺失、明确 unknown 与合法停用值，并在看结果前声明 task × metric × seed。对照检查只标出声明范围内外的变化，不能自动证明单变量。核对样本/记录/设备划分及 support/query episode 清单，相同 seed 不证明相同采样。需要机制归因时增加容量/计算量匹配的替代对照。用户返回结果后，核验配置指纹、单位、完整任务/指标覆盖及配对 seed，导入观测并追加研究历史；混杂、缺失或负结果也保留。
+
+同时核对源码冻结覆盖和声明的关键依赖；修改范围合规不能弥补漏冻结。Few-shot 清单检查类别身份、N-way/K-shot、query 数量和每 seed 的 episode 数。需要统计判定时按 [配对统计规范](references/statistical_decisions.md) 预声明方向、阈值和独立重复单位；证据不完整、重复不足或声明不一致时只保留描述统计。
 
 ## 报告与连续研究
 

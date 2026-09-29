@@ -17,7 +17,7 @@ python "%SKILL_DIR%\scripts\experiment_manifest.py" check "D:\research\records\e
 
 `--allow-config` 是精确 JSON Pointer，可重复指定同一机制的必要配置项；列表整体比较。`--allow-file` 为精确相对路径，用 `/` 分隔。若配置文件也在项目内，需明确纳入文件变化声明。不得为了让检查通过，事后把额外 lr/loss 改动全部加进白名单。
 
-退出码 0 表示生成成功/变化在声明范围内；检查发现额外变化或未发现变化时输出报告并退出 2。`within_declared_scope` 仍需读实际 diff：同一文件里可能存在多个因素。JSON manifest 含内容指纹，后续导入先验证指纹。
+退出码 0 表示本次命令未发现其处理的阻断项；检查发现额外变化、未发现变化、数据协议冲突或源码覆盖不完整时输出报告并退出 2。snapshot 的草稿也可能带缺失配置，不能用退出码代替阅读状态。`within_declared_scope` 只描述修改范围，须同时核对 source_coverage、有效配置和数据协议；同一文件里可能存在多个因素。JSON manifest 含内容指纹，后续导入先验证指纹。
 
 ## 用户结果回流
 
@@ -30,6 +30,8 @@ python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv"
 ```
 
 输出逐 seed 配对、配对均值、差值及差值的样本标准差。按完整 task × required metric × seed 检查，即使两组都漏掉整个任务/指标/seed 也会报告；没有预声明计划不能报告完整。单 seed 不输出虚构方差或未声明方法的 CI。正差值不自动等于改善，按预声明方向/阈值解释；不把多个 query 伪装成训练重复。
+
+可选启用 [配对统计与阈值判定](statistical_decisions.md)。只有明确方法/独立单位/阈值、配对及证据完整时才生成探索性 CI；缺失、声明差异、源码冻结缺口或 few-shot 未核验会阻止判定。未启用时继续保留描述统计。
 
 审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按结果摘要指纹幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
 

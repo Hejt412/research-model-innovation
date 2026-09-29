@@ -6,6 +6,7 @@
     "support_query_disjoint_by": ["sample_id", "record_id"],
     "task_splits": {}
   },
+  "few_shot": {},
   "samples": [],
   "episodes": []
 }

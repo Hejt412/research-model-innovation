@@ -39,7 +39,7 @@ loss、optimizer、预算、预处理和环境等仍应按真实项目完整记�
 
 [清单模板](../assets/data_plan_template.json) 是空骨架，不能作为证据。mode=episodic 必须有 episode；mode=fixed_split 必须是空 episode 列表。
 
-samples 每项包含字符串 sample_id、record_id、device_id、split，可附类标识。sample_id 唯一；record_id 标识原始连续记录，不得把同一记录的不同窗口伪装为独立记录。若协议允许同设备跨划分，不要随意开启设备隔离。
+samples 每项包含字符串 sample_id、record_id、device_id、split；few-shot 核对还要求被选样本的 class_id 是非空字符串。sample_id 唯一；record_id 标识原始连续记录，不得把同一记录的不同窗口伪装为独立记录。若协议允许同设备跨划分，不要随意开启设备隔离。
 
 policy.split_disjoint_by 指定不可跨 split 重叠的身份，默认 sample_id/record_id；support_query_disjoint_by 指定 episode 内 support/query 不可重叠的身份；task_splits 指定各任务允许的 support/query split。
 
@@ -65,3 +65,33 @@ python "%SKILL_DIR%\scripts\experiment_manifest.py" snapshot "D:\research\projec
 检查样本/记录/可选设备跨 split 重叠、support/query 重叠、不存在的样本、重复 episode、错误 split 与清单顺序变化。清单不同或冲突时，相同 seed 不能确认公平比较。未提供清单可保存结果，但协议状态为 not_supplied，最终解释维持不完整。
 
 工具只核对提供的身份与清单，无法发现错误重命名、未导出的 loader 状态、真实数据字节差异或错误标签。应由实际数据流程在用户环境导出；没有清单时提供导出设计，不在 Codex 训练获取。用户项目的样本 ID、设备身份、结果与源码不上传公共 Skill 仓库。
+
+## Few-shot 计数声明
+
+episodic 清单在顶层 few_shot 按任务声明以下正整数；不同 shot 必须用不同任务名。不要将 n_way/k_shot 直接放清单顶层，这会拒绝读取以防字段被忽略。
+
+```json
+{
+  "few_shot": {
+    "A-to-B-1shot": {"n_way": 4, "k_shot": 1, "query_per_class": 30, "episodes_per_seed": 20}
+  }
+}
+```
+
+每个 episode 的 support/query 都必须覆盖 n_way 个类别、类别集合相同；每类 support 恰好 k_shot，query 恰好 query_per_class。每个 task/运行 seed 的 episode 数与声明一致；缺少整个任务/seed 另由 snapshot 对照 evaluation 清单发现。可变 query 数、开放集或不同类别协议不能强行套此闭集检查，应单独定义协议并保留未核验状态。
+
+旧 episodic 清单缺少 few_shot 时仍可读取，报告 incomplete_specification；审查为 few_shot_unverified，不能确认协议完整。fixed_split 不要求 few_shot。标签仅用于核验给定类别身份，不验证标签真实性，也不意味着允许模型使用 query 标签。
+
+## 源码冻结覆盖
+
+snapshot 支持 --required-file（可重复）、--exclude-dir 与 --max-bytes。应将审阅过的训练/评估入口、模型和关键辅助依赖列为 required-file；例如：
+
+```bat
+python "%SKILL_DIR%\scripts\experiment_manifest.py" snapshot "D:\research\project" --config "D:\research\records\effective-e0.json" --required-file train.py --required-file models/model.py --required-file models/stem.py --exclude-dir tests --experiment-id E0 --out "D:\research\records\e0.json"
+```
+
+source_coverage 与修改范围 status 分开：被跳过的大文件/链接、空源码集或 required-file 缺失使覆盖不完整；两份清单采用不同扫描设置也须重新核对。排除目录会列出，其不相关性仍由人工判断。complete_in_declared_scope 只表示当前声明的文本范围完整，不证明运行时依赖闭包；二进制数据、原生扩展、外部包不在其证明范围内。
+
+不完整 snapshot 仍写出草稿报告，但退出 2；audit 和结果导入据覆盖状态阻止证据完整性确认。旧 manifest 没有 source_scope 时为 unverified_legacy_scope；如需新规则审查，从对应旧源码状态重新冻结，不能拿当前代码补成旧版本。
+
+可选统计声明、指标方向和改善阈值见 [配对统计规范](statistical_decisions.md)。

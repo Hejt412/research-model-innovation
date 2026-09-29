@@ -14,6 +14,8 @@ python -X utf8 -m unittest discover -s tests -v
 
 另覆盖完整 task/metric/seed 计划、合法 null 与 unknown、src 导入根、继承展开、样本/记录/设备隔离和 episode 顺序。CI 用 Windows/Linux 与 Python 3.12/3.13 四组运行；本地通过不自动代表跨平台已通过，必须检查对应提交的远端运行状态。
 
+进一步覆盖条件赋值保留、冻结范围/关键文件缺口、few-shot 类别与计数、受限工厂参数映射、配对统计方向和阻断条件。实例脚本只测试未显式启用时拒绝导入，不在真实项目运行。统计回归不证明方法适用于所有研究设计。
+
 ## 行为验收
 
 将 [验收请求](../evals/request.md)、本 Skill 和 `evals/fixtures` 交给未参与实现的评估者；不要预告预期结论。仅允许读输入、运行静态工具，在独立临时目录保存报告。该 fixture 是现实工作流的合成样本，不是真实论文、训练记录或用户项目。

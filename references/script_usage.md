@@ -27,7 +27,7 @@ python "%SKILL_DIR%\scripts\compare_models.py" "D:\research\analysis\models-befo
 
 可展开无歧义的本地单继承链，包含跨文件导入、继承 forward 和带来源位置的 effective_assignments/effective_methods。子类无构造函数时继承父类证据；有构造函数则仅在看到 super().__init__() 时纳入父类构造赋值。多继承、循环、未解析基类和未调用 super 的情况明确降级。条件 super、del、工厂和 monkey patch 仍需人工确认，不据静态展开证明运行时实例结构。
 
-effective_* 表示合并继承后的静态源码线索，仍可能包含未启用的条件赋值；不能解释为实际实例组件。须追踪入口、工厂参数转发、构造默认值与分支守卫，配置提取工具不会自动完成这些核对。
+effective_* 表示合并继承后的静态源码线索，仍可能包含未启用的条件赋值；不能解释为实际实例组件。赋值列表保留同一目标的所有条目、method、origin 和 guards（包括 if 的 then/else），不按目标覆盖；父类赋值、子类条件替换及其他方法中的后续修改都可能同时出现。循环/异常分支仅记录上下文，不推算执行次数或最终状态。
 
 `compare_models.py`：比较相同 `file::class` 键和 AST 内容，保留输入错误/跳过项；输出 class_source_changed、dependency_source_changed、dependencies_unverified 或 no_change_in_scanned_sources，不再输出含糊的 unchanged。读取旧 schema v1 时缺少依赖证据，不能推断行为等价。
 
@@ -40,3 +40,5 @@ python "%SKILL_DIR%\scripts\compare_models.py" "D:\research\analysis\models-befo
 输出类体赋值差异、双方基类/继承状态、展开后的组件证据和按表示/backbone/融合/分类器分类的关键词证据。assignments_removed 仍只针对类体；结构阅读应结合 effective_component_evidence，不能把子类未重复写 stem 当作删除。关键词不是语义结论。训练协议需另读入口及 manifest；未指定选择器时重命名仍视为新增/删除。
 
 `extract_experiment_config.py`：提取配置相关赋值/调用及文本行；不求值、不合并配置、不解析运行时覆盖。缺失字段需人工读代码和运行记录补齐。
+
+已定位具体工厂时，可用 `trace_config.py` 做受限的参数到构造输入对照，详见 [参数传递核对](config_flow.md)。与通用配置提取不同，它要求明确文件/工厂/类；动态行为仍保留未知。
