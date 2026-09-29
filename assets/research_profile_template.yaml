@@ -1,0 +1,38 @@
+# 项目档案模板；null/[] 表示尚未核实，不是项目事实。
+project:
+  field: null
+  tasks: []
+  modalities: []
+  datasets: []
+  domain_definition: null
+models:
+  baseline_file: null
+  baseline_class: null
+  baseline_config: null
+  compared_models: []
+research_goal:
+  primary: null
+protocol:
+  source_target: null
+  target_label_access: null
+  inductive_or_transductive: null
+  split_definition: null
+  shots: []
+  metrics: []
+literature:
+  cross_domain_required: true
+  preferred_domains: []
+  exclude_application_domains: []
+  preferred_venues: []
+  discovery_windows_months: [12, 24, 36]
+  prior_art_lower_date_limit: null
+experiments:
+  single_variable_only: true
+  run_training_in_codex: false
+  seeds: []
+implementation:
+  prefer_modify_existing_files: true
+  windows_command_shell: cmd.exe
+evidence:
+  sources: []
+  unconfirmed_fields: []

@@ -1,0 +1,27 @@
+# 单变量实验与训练边界
+
+ONE INNOVATION PER EXPERIMENT：一个实验相对明确的对照，只改一个独立因素。模块名不能掩盖多个变化；adapter + 新 loss、结构 + lr、augmentation + classifier 均需拆开。必要的接口接线不自动算第二创新，但其行为影响必须说明。
+
+默认顺序：E0=冻结 baseline，E1=E0+A。由用户运行并提供 E1 结果后，再决定 E2；测试独立 B 用 E0+B，累积 B 用已验证的 E1+B，分别明确对照。不得提前把 A+B+C 写成一个已验证方案。可以列后续候选，但执行顺序有结果依赖。
+
+冻结并列出：数据与 split、source/target、support/query、N-way/K-shot、窗口/步长、seed 集、epoch/step、optimizer、lr/scheduler、batch/episode、augmentation、预处理拟合范围、checkpoint 选择与评估协议。不得静默“顺便优化”这些因素。如资源约束导致额外改变，则该实验已受混杂，重新设计对照或只报探索性结果。
+
+每个方案提供：
+
+- hypothesis、control_id、唯一 change、保持不变清单、配置差异、基线恢复开关。
+- 预先声明主指标和决策标准，适用时 accuracy、macro-F1、跨域分项、校准、参数/可训练参数、推理开销、训练成本。
+- 多个配对随机种子、相同任务采样；报告逐种子与均值/离散度。CI 必须说明计算及独立采样单位，不能将同一次训练的所有 query 当作独立训练重复。
+- 最佳值不能替代多 seed 结果；不要在测试集挑模块、超参或停止点。记录失败和不变结果。
+- 消融先开/关唯一机制；针对机制内部的参数实验单独列项，不能同时调整多个因素。
+
+不执行训练、微调、搜索或产生梯度更新的测试。允许源码/配置/语法检查；运行无训练测试前审阅入口与导入副作用，不靠 `--help`、`--dry-run` 或 `--epochs 0` 名字判断安全。不自动导入项目来计算参数。可交付用户运行的 shape/参数检查，但清楚说明尚未运行。
+
+训练交付物必须包含真实入口、依赖、工作目录、完整配置和命令。以下只是 Windows 语法形式，实际交付要替换为项目已核验的脚本和参数，不能当作存在的 API：
+
+```bat
+cd /d "D:\research\my-project"
+set CUDA_VISIBLE_DEVICES=0
+python train.py --config configs\experiment_e1.yaml
+```
+
+路径含空格加双引号；长命令用 cmd 的 `^` 换行或单行，不用 PowerShell 环境变量语法。提供 baseline 和单项变体的可重现命令。无真实项目时不能承诺上述占位命令可直接运行。

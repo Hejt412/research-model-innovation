@@ -1,0 +1,17 @@
+# {{I-ID}}：{{候选名称}}
+
+- 状态/日期：{{status_date}}
+- 缺口与代码证据：{{G-ID, file:line, fact_or_hypothesis}}
+- 原论文：{{P-ID, exact_title, authors, venue_type, date, DOI_or_official_URL}}
+- 访问范围/方法位置：{{access, section_equation_page}}
+- 原问题 → 抽象问题 → 项目问题：{{mapping}}
+- 原机制/公式（出处）：{{source_mechanism}}
+- 拟改造公式及符号/形状：{{proposal}}
+- 可迁移条件/所需数据/不可迁移部分：{{assumptions}}
+- 同领域最接近先例及概念重合：{{prior_art}}
+- 实质差异/重复风险/覆盖限制：{{difference, risk, coverage}}
+- 预期收益假设/反例/失败模式：{{hypothesis_and_falsifier}}
+- 文件/类/函数/真实接口：{{code_plan}}
+- 唯一实验因素/对照/冻结项：{{E-ID, control, change, invariants}}
+- 难度/开销与未知项：{{cost}}
+- 机制指纹/历史链接：{{fingerprint, H-ID}}
