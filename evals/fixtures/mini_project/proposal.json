@@ -1,0 +1,5 @@
+{
+  "model": "Candidate",
+  "training": {"lr": 0.01, "loss": "cross_entropy_plus_contrastive"},
+  "adaptation": {"calibrate_with": "target_query_labels"}
+}

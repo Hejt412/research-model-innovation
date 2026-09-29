@@ -7,8 +7,9 @@ import os
 from pathlib import Path
 import sys
 import tokenize
+from _dependencies import build_graph, dependencies
 
-SCHEMA = 1
+SCHEMA = 2
 SKIP = {'.git', '.hg', '.svn', '.venv', 'venv', 'env', '__pycache__',
         'node_modules', 'site-packages', 'checkpoints', 'wandb', 'outputs',
         'dist', 'build', '.mypy_cache', '.pytest_cache'}
@@ -84,9 +85,19 @@ def expr(node):
     return ast.unparse(node) if node is not None else None
 
 
+def scope_nodes(root):
+    """Visit one lexical body without attributing nested functions/classes to it."""
+    pending = list(reversed(list(ast.iter_child_nodes(root))))
+    while pending:
+        node = pending.pop()
+        yield node
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            pending.extend(reversed(list(ast.iter_child_nodes(node))))
+
+
 def alias_map(tree):
     aliases = {}
-    for node in ast.walk(tree):
+    for node in scope_nodes(tree):
         if isinstance(node, ast.Import):
             for item in node.names:
                 aliases[item.asname or item.name.split('.')[0]] = (
@@ -128,15 +139,15 @@ def models(path, relative=None):
             continue
         method_rows, assignments = [], []
         for method in methods:
-            calls = sorted((n for n in ast.walk(method) if isinstance(n, ast.Call)),
+            calls = sorted((n for n in scope_nodes(method) if isinstance(n, ast.Call)),
                            key=lambda n: (n.lineno, n.col_offset))
             method_rows.append({
                 'name': method.name, 'line': method.lineno,
                 'end_line': method.end_lineno, 'arguments': expr(method.args),
                 'calls_in_source_order': [{'line': n.lineno, 'call': expr(n)} for n in calls],
                 'returns': [{'line': n.lineno, 'expression': expr(n.value)}
-                            for n in ast.walk(method) if isinstance(n, ast.Return)]})
-            for item in ast.walk(method):
+                            for n in scope_nodes(method) if isinstance(n, ast.Return)]})
+            for item in scope_nodes(method):
                 targets = item.targets if isinstance(item, ast.Assign) else (
                     [item.target] if isinstance(item, ast.AnnAssign) else [])
                 for target in targets:
@@ -156,17 +167,24 @@ def models(path, relative=None):
 
 def read_models(root, max_bytes, exclude_dirs):
     root, files, skipped, errors = inventory(root, max_bytes, exclude_dirs)
-    rows = []
+    rows, trees = [], {}
     for path in files:
         if path.suffix.lower() != '.py':
             continue
         try:
+            _, trees[path.relative_to(root).as_posix()] = source_tree(path)
             rows.extend(models(path, path.relative_to(root).as_posix()))
         except (OSError, UnicodeError, SyntaxError, ValueError, RecursionError) as exc:
             errors.append({'path': path.relative_to(root).as_posix(), 'error': str(exc)})
+    graph, unknown = build_graph(trees)
+    for row in rows:
+        row['dependencies'] = dependencies(row['file'], trees, graph, unknown)
+        row['dependencies']['scan_incomplete'] = bool(errors or skipped)
+    source_files = {key: {'imports': sorted(graph[key]), 'unverified_imports': sorted(unknown[key])}
+                    for key in sorted(trees)}
     return {'schema_version': SCHEMA, 'root': str(root), 'mode': 'static_no_project_execution',
             'limitations': ['Candidate detection, not complete runtime architecture.',
                             'Calls are source order, not execution flow.',
                             'Shapes, parameters and FLOPs are not measured.',
                             'Gitignore is not interpreted; exclusions and skipped files are reported.'],
-            'models': rows, 'skipped': skipped, 'errors': errors}
+            'models': rows, 'source_files': source_files, 'skipped': skipped, 'errors': errors}

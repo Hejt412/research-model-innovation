@@ -45,8 +45,10 @@ $research-model-innovation
 SKILL.md          核心流程与约束
 agents/           中文显示名和默认调用提示
 references/       项目分析、检索、创新评估、实验与输出规范
-scripts/          四个静态分析命令及共享模块
+scripts/          模型分析、实验检查、结果回流与文献账本工具
 assets/           报告、创新卡、文献表、项目档案与历史模板
+tests/            标准库回归及命令行流程验收
+evals/            离线科研任务样本（合成资料）
 ```
 
 脚本仅依赖 Python 3.12+ 标准库，不需要 PyTorch。使用方法见 [静态脚本说明](references/script_usage.md)。
@@ -57,6 +59,21 @@ assets/           报告、创新卡、文献表、项目档案与历史模板
 | `analyze_models.py` | 用 AST 定位模型候选、方法及模块赋值 |
 | `compare_models.py` | 比较两份静态模型报告 |
 | `extract_experiment_config.py` | 提取实验配置的源码证据 |
+| `experiment_manifest.py` | 冻结源码/有效配置，标出单变量声明以外的变化 |
+| `import_results.py` | 导入用户 CSV，按 seed 配对、检查来源并追加历史 |
+| `literature_ledger.py` | 文献去重、版本归组、主张证据检查及增量检索计划 |
+
+模型比较支持本地传递依赖、外部辅助函数变化以及两个指定模型的直接比较。未核验的依赖会明确标记，不将类源码未变等同于模型行为等价。
+
+实验、结果及文献命令详见 [证据工具说明](references/evidence_tools.md)。缺口分析按观测证据分档，机制归因考虑容量/计算预算等竞争解释，见 [缺口优先级与机制验证](references/gap_validation.md)。
+
+## 验证
+
+```bat
+python -X utf8 -m unittest discover -s tests -v
+```
+
+测试仅运行工具和处理合成记录，不执行样本项目或训练。完整科研行为验收方法见 [验收说明](references/behavioral_acceptance.md)。离线样本不能替代真实项目与联网文献检索验证。
 
 ## 研究约束
 

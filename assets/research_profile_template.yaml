@@ -36,3 +36,7 @@ implementation:
 evidence:
   sources: []
   unconfirmed_fields: []
+  literature_ledger: null
+  experiment_records_directory: null
+  results_csv: null
+  research_history: null

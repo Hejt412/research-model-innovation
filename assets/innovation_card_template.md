@@ -2,6 +2,7 @@
 
 - 状态/日期：{{status_date}}
 - 缺口与代码证据：{{G-ID, file:line, fact_or_hypothesis}}
+- 问题证据档/最小诊断/优先级理由：{{observed_indicated_hypothesized_or_invalid, diagnostic, priority}}
 - 原论文：{{P-ID, exact_title, authors, venue_type, date, DOI_or_official_URL}}
 - 访问范围/方法位置：{{access, section_equation_page}}
 - 原问题 → 抽象问题 → 项目问题：{{mapping}}
@@ -13,5 +14,6 @@
 - 预期收益假设/反例/失败模式：{{hypothesis_and_falsifier}}
 - 文件/类/函数/真实接口：{{code_plan}}
 - 唯一实验因素/对照/冻结项：{{E-ID, control, change, invariants}}
+- manifest/差异审查/竞争解释及容量对照：{{manifest, audit, alternative_explanations, matched_control}}
 - 难度/开销与未知项：{{cost}}
 - 机制指纹/历史链接：{{fingerprint, H-ID}}
