@@ -56,4 +56,6 @@ python "%SKILL_DIR%\scripts\literature_ledger.py" plan "D:\research\records\lite
 
 DOI 去前缀并统一大小写；DOI/URL 对应且核心元数据一致时去重并保留 ID 别名。冲突保留在 conflicts，不覆盖原记录；相同标题只提示可能的版本关系。预印本与正式版保持独立 paper ID，通过相同 `work_id` 归组；每个关联必须提供 `relation_evidence` 官方 URL。工具保留各版本而不把预印本冒充期刊版。
 
-主张审查指出缺失文献、元数据冲突和只有摘要却主张完整机制的问题。即便 `source_linked_human_verification_required` 也只是关联完整，需实际读文核对。增量计划保留同领域先例不限历史时间的规则。日期与 DOI 只做语法校验；题名、来源真实性、版本关系、撤稿更正状态仍需联网/人工核实。
+连续合并会保留两侧的 aliases 和 conflicts；既有别名不能被另一篇论文无提示地复用。alias_audit 检查别名链、循环、缺失目标、论文 ID 占用和竞争目标。被隔离的论文或别名断言保存在 conflicts；不覆盖原始输入。主张规范化到论文 ID 时另存 source_paper_id，便于追踪原始引用。
+
+主张审查指出缺失文献、元数据冲突和只有摘要却主张完整机制的问题。与未解决身份冲突相连的别名及论文保守阻断；冲突主张的审查结果不提供确定的 paper_id/URL，原记录仍保留。合并顺序可能影响保留的主记录，不能影响冲突证据的保留或把歧义来源标为已关联。即便 `source_linked_human_verification_required` 也只是关联完整，需实际读文核对。增量计划保留同领域先例不限历史时间的规则。日期与 DOI 只做语法校验；题名、来源真实性、版本关系、撤稿更正状态仍需联网/人工核实。

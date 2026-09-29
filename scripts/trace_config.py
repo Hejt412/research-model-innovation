@@ -29,10 +29,6 @@ def value(node, env):
             return -operand if isinstance(node.op, ast.USub) else operand
     if isinstance(node, ast.Dict) and all(k is not None for k in node.keys):
         return {value(k, env): value(v, env) for k, v in zip(node.keys, node.values)}
-    if isinstance(node, ast.Attribute):
-        base = value(node.value, env)
-        if isinstance(base, dict) and node.attr in base:
-            return base[node.attr]
     if isinstance(node, ast.Subscript):
         base, key = value(node.value, env), value(node.slice, env)
         if isinstance(base, dict) and key in base:
@@ -71,24 +67,35 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
     env = {config_param: config}
     uncertain_context = bool(factory.decorator_list or cls.decorator_list or init.decorator_list or isinstance(factory, ast.AsyncFunctionDef))
     side_effects = []
+    scope_limitations = [
+        {'line': node.lineno, 'kind': type(node).__name__, 'reason': 'unresolved_comprehension_scope'}
+        for node in scope_nodes(factory)
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp))
+        and any(child is call for child in ast.walk(node))]
+    uncertain_context = uncertain_context or bool(scope_limitations)
 
     def possible_effects(expression):
         # Whitelisted cfg.get on a supplied plain JSON mapping is read-only.
         # All other calls, assignment expressions, yields and awaits can affect
         # subsequent argument reads. Do not execute them to find out.
         found = []
+        safe_attributes = set()
+        for node in ast.walk(expression):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'get':
+                try:
+                    if isinstance(value(node.func.value, env), dict) and not node.keywords and 1 <= len(node.args) <= 2:
+                        safe_attributes.add(id(node.func))
+                except (Unresolved, TypeError, KeyError):
+                    pass
         for node in ast.walk(expression):
             if isinstance(node, ast.Call):
-                safe = False
-                if isinstance(node.func, ast.Attribute) and node.func.attr == 'get':
-                    try:
-                        safe = isinstance(value(node.func.value, env), dict) and not node.keywords and 1 <= len(node.args) <= 2
-                    except (Unresolved, TypeError, KeyError):
-                        pass
+                safe = id(node.func) in safe_attributes
                 if not safe:
                     found.append({'line': node.lineno, 'expression': ast.unparse(node), 'reason': 'call_may_mutate_state'})
             elif isinstance(node, (ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)):
                 found.append({'line': node.lineno, 'expression': ast.unparse(node), 'reason': 'stateful_expression'})
+            elif isinstance(node, ast.Attribute) and id(node) not in safe_attributes:
+                found.append({'line': node.lineno, 'expression': ast.unparse(node), 'reason': 'unverified_attribute_access'})
         return found
     # Only straight-line assignments preceding the containing statement are read.
     containing_statement = None
@@ -165,6 +172,7 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
             'extra_keyword_arguments': {name: describe(item) for name, item in binding['extra_keywords'].items()},
             'variadic_positional_arguments': [describe(item) for item in binding['variadic_positional']],
             'possible_side_effects': side_effects,
+            'scope_limitations': scope_limitations,
             'unmatched_config_keys': sorted(set(config) - set(binding['named'])),
             'constructor_binding_verified': False, 'runtime_instance_verified': False,
             'limitations': ['The caller selects the factory/class binding; imports, aliases and decorators are not executed.',

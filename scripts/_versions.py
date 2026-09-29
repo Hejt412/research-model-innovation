@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 import subprocess
 
-RULES_VERSION = '2.1'
-KNOWN_RULES = ('2.0', RULES_VERSION)
+RULES_VERSION = '2.2'
+KNOWN_RULES = ('2.0', '2.1', RULES_VERSION)
 FORMATS = {'experiment_manifest': 2, 'experiment_audit': 2, 'observed_result_summary': 2,
            'run_ledger': 1, 'config_flow_evidence': 1}
 
