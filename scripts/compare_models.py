@@ -42,6 +42,10 @@ def compare(old, new):
             'assignments_removed': sorted(x-y), 'assignments_added': sorted(y-x),
             'assignment_scope': 'class_body_only; inherited components are not expanded or proven removed',
             'left_bases': old.get('bases', []), 'right_bases': new.get('bases', []),
+            'left_inheritance': old.get('inheritance', {'status': 'not_available'}),
+            'right_inheritance': new.get('inheritance', {'status': 'not_available'}),
+            'effective_component_evidence': {'left': old.get('effective_assignments', old['assignments']),
+                                             'right': new.get('effective_assignments', new['assignments'])},
             'assignments_shared': sorted(x & y), 'left_methods': old['methods'], 'right_methods': new['methods'],
             'architecture_evidence': {'left': architecture_evidence(old), 'right': architecture_evidence(new)},
             'training_protocol': 'not established by model source; compare experiment manifests',
@@ -56,8 +60,8 @@ def architecture_evidence(model):
              'normalization': ('norm',), 'classifier': ('classifier', 'head', 'prototype', 'linear'),
              'loss': ('loss', 'criterion', 'cross_entropy')}
     evidence = [{'line': item['line'], 'expression': item['target'] + ' = ' + str(item['expression'])}
-                for item in model['assignments']]
-    for method in model['methods']:
+                for item in model.get('effective_assignments', model['assignments'])]
+    for method in model.get('effective_methods', model['methods']):
         evidence.extend({'line': call['line'], 'expression': call['call']}
                         for call in method.get('calls_in_source_order', []))
     return {kind: {'status': 'keyword_hints_require_source_review',

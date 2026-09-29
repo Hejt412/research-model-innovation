@@ -62,8 +62,11 @@ evals/            离线科研任务样本（合成资料）
 | `experiment_manifest.py` | 冻结源码/有效配置，标出单变量声明以外的变化 |
 | `import_results.py` | 导入用户 CSV，按 seed 配对、检查来源并追加历史 |
 | `literature_ledger.py` | 文献去重、版本归组、主张证据检查及增量检索计划 |
+| `data_protocol.py` | 核对样本/记录/设备划分和有序 support/query episode 清单 |
 
 模型比较支持本地传递依赖、外部辅助函数变化以及两个指定模型的直接比较。未核验的依赖会明确标记，不将类源码未变等同于模型行为等价。
+
+支持自定义 `--import-root` 分析 src 布局，并展开可解析的本地单继承组件。结果导入核对完整 task × required metric × seed，能识别整个任务或指标都未提交的情况。配置校验区分缺失、unknown、类型错误及明确停用；数据计划缺失/冲突不会被当作协议已确认。详见 [协议规范](references/protocol_contract.md)。
 
 实验、结果及文献命令详见 [证据工具说明](references/evidence_tools.md)。缺口分析按观测证据分档，机制归因考虑容量/计算预算等竞争解释，见 [缺口优先级与机制验证](references/gap_validation.md)。
 
@@ -74,6 +77,8 @@ python -X utf8 -m unittest discover -s tests -v
 ```
 
 测试仅运行工具和处理合成记录，不执行样本项目或训练。完整科研行为验收方法见 [验收说明](references/behavioral_acceptance.md)。离线样本不能替代真实项目与联网文献检索验证。
+
+GitHub Actions 在 Windows/Linux × Python 3.12/3.13 上执行同一套回归，工作流只运行 Skill 工具测试。查看 [CI 运行记录](https://github.com/Hejt412/research-model-innovation/actions/workflows/tests.yml)。真实私有项目验收材料与报告保存在用户本地，不随 Skill 发布。
 
 ## 研究约束
 

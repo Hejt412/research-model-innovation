@@ -23,6 +23,8 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 
 可用 [静态分析脚本](references/script_usage.md) 提取源码定位；这些脚本不导入项目、不执行 forward、不统计真实参数量。脚本输出是阅读索引，不是模型结构的完整证明。
 
+扫描前确定范围，排除测试、临时第三方副本和无关结果目录。沿真实入口追踪模型工厂、参数转发、构造默认值及条件分支，分别记录声明配置与有效配置；不能按文件名或静态赋值推定实际启用的组件。引用历史性能前核对当时源码及依赖指纹，无法对应当前版本时保留归因未知。
+
 输出模型比较及 Innovation Gap Map：模块、现有实现、代码证据、潜在问题、已有实验证据、可证伪问题。按 [缺口优先级与机制验证](references/gap_validation.md) 区分已观测问题与结构猜测，优先补最小诊断证据。暂不填入随意推荐的模块。不同模型可显式选择比较；类源码未变不代表依赖或模型行为未变。
 
 ## 阶段 2：跨领域发现与机制迁移
@@ -47,7 +49,7 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 
 按 [实验规则](references/experiment_rules.md) 给出 E0 与 E1、冻结配置、用户运行命令、判定标准及消融。检查实现时限于静态检查及确认不会触发训练的测试，不加载未知训练入口。参数/FLOPs/性能未测即写待测。
 
-用实验 manifest 保存经核对的有效配置和源码指纹；对照检查只标出声明范围内外的变化，不能自动证明单变量。需要机制归因时增加容量/计算量匹配的替代对照。用户返回结果后，核验配置指纹、单位和配对 seed，导入观测并追加研究历史；混杂、缺失或负结果也保留。
+用实验 manifest 保存经核对的有效配置和源码指纹；按 [协议规范](references/protocol_contract.md) 区分必填缺失、明确 unknown 与合法停用值，并在看结果前声明 task × metric × seed。对照检查只标出声明范围内外的变化，不能自动证明单变量。核对样本/记录/设备划分及 support/query episode 清单，相同 seed 不证明相同采样。需要机制归因时增加容量/计算量匹配的替代对照。用户返回结果后，核验配置指纹、单位、完整任务/指标覆盖及配对 seed，导入观测并追加研究历史；混杂、缺失或负结果也保留。
 
 ## 报告与连续研究
 

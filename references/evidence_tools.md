@@ -4,7 +4,7 @@
 
 ## 冻结实验与检查差异
 
-先把实际入口、CLI 覆盖、配置继承核对后的有效设置整理为 JSON，可参考 [配置模板](../assets/effective_config_template.json)。模板中的 null 需补证，不能当有效实验设置。数据集、划分清单、代码版本等以用户核实的标识或摘要记录；脚本不会读取二进制数据验证身份。
+先把实际入口、CLI 覆盖、配置继承核对后的有效设置整理为 JSON，可参考 [配置模板](../assets/effective_config_template.json)。模板中的 unknown 需补证。字段、可空值、任务/指标清单和数据身份格式见 [协议规范](protocol_contract.md)。脚本不会读取二进制数据验证身份。
 
 ```bat
 set "SKILL_DIR=%USERPROFILE%\.codex\skills\research-model-innovation"
@@ -13,7 +13,7 @@ python "%SKILL_DIR%\scripts\experiment_manifest.py" snapshot "D:\research\projec
 python "%SKILL_DIR%\scripts\experiment_manifest.py" check "D:\research\records\e0.json" "D:\research\records\e1.json" --factor "启用条件模块" --allow-config /model/condition_adapter --allow-file models/model.py --out "D:\research\records\audit.json"
 ```
 
-两个 snapshot 必须在各自真实源码状态下生成，不要对同一修改后的目录假称有旧快照。manifest 输出放被扫描项目之外。指纹使用 Python/文本配置的原始字节；空白改变也会提示审查。扫描范围/跳过项保留，不覆盖二进制、notebook 或运行时环境。配置中的 null 和空 seed 计划列入 unresolved_config_paths；存在这些未知项的结果不能视为协议已完整核验。未记录的配置字段无法自动发现，需按模板和实际训练入口核对。
+两个 snapshot 必须在各自真实源码状态下生成，不要对同一修改后的目录假称有旧快照。manifest 输出放被扫描项目之外。指纹使用 Python/文本配置原始字节，空白变化也会提示审查。config_validation 分开报告 missing、unknown、invalid 和 disabled；合法 scheduler=null 不列未知，必填字段完全缺失也会发现。类型/值域错误拒绝生成，缺失/未知允许保存草稿但不确认协议完整。
 
 `--allow-config` 是精确 JSON Pointer，可重复指定同一机制的必要配置项；列表整体比较。`--allow-file` 为精确相对路径，用 `/` 分隔。若配置文件也在项目内，需明确纳入文件变化声明。不得为了让检查通过，事后把额外 lr/loss 改动全部加进白名单。
 
@@ -29,7 +29,7 @@ CSV 格式参考 [结果表头](../assets/results_template.csv)。每行是一�
 python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv" --control "D:\research\records\e0.json" --experiment "D:\research\records\e1.json" --audit "D:\research\records\audit.json" --out "D:\research\records\summary.json" --history "D:\research\project\research_history.md"
 ```
 
-输出逐 seed 配对、配对均值、差值及差值的样本标准差。按冻结配置的 training.seeds 检查计划，即使两组都漏掉同一 seed 也会报告；未提供 seed 计划时标记不完整。单 seed 不输出虚构方差；不自动计算未声明方法的 CI 或显著性。正差值不自动等于改善，按预先声明的指标方向/阈值解释。多任务分别统计，不能把多个任务或 query 伪装成独立训练 seed。
+输出逐 seed 配对、配对均值、差值及差值的样本标准差。按完整 task × required metric × seed 检查，即使两组都漏掉整个任务/指标/seed 也会报告；没有预声明计划不能报告完整。单 seed 不输出虚构方差或未声明方法的 CI。正差值不自动等于改善，按预声明方向/阈值解释；不把多个 query 伪装成训练重复。
 
 审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按结果摘要指纹幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
 

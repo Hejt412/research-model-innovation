@@ -4,23 +4,22 @@ import hashlib
 from pathlib import Path
 from _static import emit, inventory
 from _records import changes, manifest, read_json, seal
+from _config_schema import evaluation_plan, validate_config
+from data_protocol import inspect_plan
 
 
 def unresolved_paths(value, path=''):
-    if isinstance(value, dict):
-        return [pointer for key, item in value.items()
-                for pointer in unresolved_paths(item, path + '/' + key.replace('~', '~0').replace('/', '~1'))]
-    if value is None or (path.endswith('/seeds') and value == []):
-        return [path]
-    if isinstance(value, list):
-        return [pointer for i, item in enumerate(value) for pointer in unresolved_paths(item, path + '/' + str(i))]
-    return []
+    report = validate_config(value)
+    return sorted(set(report['missing'] + report['unknown'] + [item['path'] for item in report['invalid']]))
 
 
-def snapshot(root, config_path, experiment_id, control_id=None):
+def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None):
     config = read_json(config_path)
     if not isinstance(config, dict) or not config:
         raise ValueError('Provide a nonempty, reviewed effective config as a JSON object')
+    validation = validate_config(config)
+    if validation['invalid']:
+        raise ValueError('Invalid config fields: ' + str(validation['invalid']))
     root, paths, skipped, errors = inventory(root)
     if errors:
         raise ValueError('Cannot freeze a manifest with unreadable files: ' + str(errors))
@@ -28,9 +27,27 @@ def snapshot(root, config_path, experiment_id, control_id=None):
     for path in paths:
         if path.suffix.lower() != '.md':
             files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    data_report = inspect_plan(read_json(data_plan)) if data_plan else None
+    if data_report:
+        expected_plan = evaluation_plan(config)
+        sampling = config.get('evaluation', {}).get('sampling')
+        if sampling != data_report['mode']:
+            data_report['issues'].append({'kind': 'sampling_mode_unconfirmed_or_mismatch'})
+        if data_report['mode'] == 'episodic':
+            observed_pairs = {(r['task'], r['seed']) for r in data_report['task_seed_counts']}
+            wanted_pairs = {(task, seed) for task in expected_plan['tasks'] for seed in expected_plan['seeds']}
+            if not expected_plan['declared']:
+                data_report['issues'].append({'kind': 'evaluation_plan_undeclared'})
+            for task, seed in sorted(wanted_pairs - observed_pairs):
+                data_report['issues'].append({'kind': 'missing_task_seed_episodes', 'task': task, 'seed': seed})
+            for task, seed in sorted(observed_pairs - wanted_pairs):
+                data_report['issues'].append({'kind': 'unplanned_task_seed_episodes', 'task': task, 'seed': seed})
+        data_report['status'] = 'protocol_conflicts' if data_report['issues'] else 'declared_plan_consistent'
     return seal({'schema_version': 1, 'kind': 'experiment_manifest', 'experiment_id': experiment_id,
                  'control_id': control_id, 'config': config, 'files': files, 'skipped': skipped,
                  'unresolved_config_paths': unresolved_paths(config),
+                 'config_validation': validation,
+                 'data_protocol': data_report,
                  'coverage': 'Python and text configs under root; no binary data/notebooks/runtime validation',
                  'effective_config_verified_at_runtime': False})
 
@@ -49,13 +66,19 @@ def audit(before, after, factor, config_paths, allowed_files):
     unexpected_files = [key for key in files if key not in allowed_files]
     status = ('extra_changes_detected' if unexpected_config or unexpected_files else
               'no_change_detected' if not delta and not files else 'within_declared_scope')
+    left_data, right_data = before.get('data_protocol'), after.get('data_protocol')
+    data_status = ('not_supplied' if not left_data or not right_data else
+                   'protocol_conflicts' if left_data['issues'] or right_data['issues'] else
+                   'declared_plan_changed' if left_data['plan_sha256'] != right_data['plan_sha256'] else 'same_declared_plan')
     return {'schema_version': 1, 'kind': 'experiment_audit', 'status': status, 'factor': factor,
             'control_sha256': before['manifest_sha256'], 'experiment_sha256': after['manifest_sha256'],
             'declared_config_paths': sorted(config_paths), 'declared_files': sorted(allowed_files),
             'config_changes': delta, 'file_changes': files,
             'unexpected_config_changes': unexpected_config, 'unexpected_file_changes': unexpected_files,
-            'unresolved_config_paths': {'control': before.get('unresolved_config_paths', unresolved_paths(before['config'])),
-                                        'experiment': after.get('unresolved_config_paths', unresolved_paths(after['config']))},
+            'unresolved_config_paths': {'control': unresolved_paths(before['config']),
+                                        'experiment': unresolved_paths(after['config'])},
+            'config_validation': {'control': validate_config(before['config']), 'experiment': validate_config(after['config'])},
+            'data_protocol_status': data_status,
             'skipped': {'control': before['skipped'], 'experiment': after['skipped']},
             'single_factor_causality_verified': False,
             'review_required': 'Review the actual diff: one allowed file can contain multiple independent changes. '
@@ -70,6 +93,7 @@ def main():
     snap.add_argument('--config', type=Path, required=True)
     snap.add_argument('--experiment-id', required=True)
     snap.add_argument('--control-id')
+    snap.add_argument('--data-plan', type=Path, help='Sample split and episode JSON; metadata only')
     snap.add_argument('--out', type=Path, required=True)
     check = commands.add_parser('check')
     check.add_argument('control', type=Path)
@@ -83,14 +107,14 @@ def main():
         if args.command == 'snapshot':
             if args.out.resolve().is_relative_to(args.root.resolve()):
                 raise ValueError('Store manifests outside the scanned project root to avoid self-inclusion')
-            result = snapshot(args.root, args.config, args.experiment_id, args.control_id)
+            result = snapshot(args.root, args.config, args.experiment_id, args.control_id, args.data_plan)
         else:
             result = audit(manifest(args.control), manifest(args.experiment), args.factor,
                            args.allow_config, args.allow_file)
         emit(result, args.out)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         p.error(str(exc))
-    if result.get('status') in {'extra_changes_detected', 'no_change_detected'}:
+    if result.get('status') in {'extra_changes_detected', 'no_change_detected'} or result.get('data_protocol_status') in {'protocol_conflicts', 'declared_plan_changed'}:
         raise SystemExit(2)
 
 

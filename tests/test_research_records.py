@@ -24,7 +24,10 @@ class ExperimentTests(unittest.TestCase):
         self.model = self.project / 'model.py'
         self.model.write_text('value = 1\n')
         self.config = self.base / 'effective.json'
-        self.settings = {'model': {'adapter': False}, 'training': {'lr': 0.001, 'seeds': [1, 2]}, 'protocol': {'split': 'split-v1'}}
+        self.settings = {'model': {'baseline': 'Fixture', 'adapter': False}, 'data': {'dataset_id': 'fixture'},
+                         'training': {'lr': 0.001, 'seeds': [1, 2], 'scheduler': None},
+                         'protocol': {'split': 'split-v1', 'target_label_access': 'support_only'},
+                         'evaluation': {'sampling': 'fixed_split', 'tasks': ['A-to-B'], 'metrics': [{'name': 'accuracy', 'unit': 'fraction', 'direction': 'higher', 'role': 'primary', 'required': True}]}}
         self.config.write_text(json.dumps(self.settings))
         self.control = snapshot(self.project, self.config, 'E0')
         self.settings['model']['adapter'] = True

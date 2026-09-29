@@ -9,6 +9,7 @@ import statistics
 from _records import fingerprint, manifest, read_json
 from _static import emit
 from experiment_manifest import audit
+from _config_schema import evaluation_plan, validate_config
 
 
 def summarize(csv_path, control, experiment, audit_record):
@@ -19,14 +20,19 @@ def summarize(csv_path, control, experiment, audit_record):
         raise ValueError('Audit does not match the supplied manifests/declaration')
     config_incomplete = any(expected['unresolved_config_paths'].values())
     ids = {control['experiment_id']: control, experiment['experiment_id']: experiment}
+    plans = {key: evaluation_plan(record['config']) for key, record in ids.items()}
     seed_plans = {}
     for exp_id, record in ids.items():
-        seeds = record['config'].get('training', {}).get('seeds')
-        seed_plans[exp_id] = {str(int(s)) for s in seeds} if isinstance(seeds, list) and seeds else None
+        invalid = validate_config(record['config'])['invalid']
+        if invalid:
+            raise ValueError('Invalid declared configuration: ' + str(invalid))
+        seed_plans[exp_id] = set(plans[exp_id]['seeds']) or None
     rows, units = {}, {}
     with csv_path.open(encoding='utf-8-sig', newline='') as handle:
         reader = csv.DictReader(handle)
         required = {'experiment_id', 'seed', 'task', 'metric', 'value', 'unit', 'manifest_sha256'}
+        if reader.fieldnames and len(reader.fieldnames) != len(set(reader.fieldnames)):
+            raise ValueError('Duplicate CSV column names')
         if not required.issubset(reader.fieldnames or []):
             raise ValueError('CSV missing required columns: ' + ', '.join(sorted(required)))
         for number, row in enumerate(reader, 2):
@@ -38,7 +44,17 @@ def summarize(csv_path, control, experiment, audit_record):
                 raise ValueError(f'Unknown experiment ID at line {number}: {exp}')
             if row['manifest_sha256'] != ids[exp]['manifest_sha256']:
                 raise ValueError(f'CSV/manifest fingerprint mismatch at line {number}')
+            plan = plans[exp]
+            if plan['tasks'] and row['task'] not in plan['tasks']:
+                raise ValueError('Observed task is outside declared plan: ' + row['task'])
+            if plan['metrics']:
+                if row['metric'] not in plan['metrics']:
+                    raise ValueError('Observed metric is outside declared plan: ' + row['metric'])
+                if row['unit'] != plan['metrics'][row['metric']]['unit']:
+                    raise ValueError('Observed unit differs from the metric plan')
             seed = str(int(row['seed']))
+            if int(seed) < 0:
+                raise ValueError('Observed seed must be nonnegative')
             if seed_plans[exp] is not None and seed not in seed_plans[exp]:
                 raise ValueError('Observed seed is outside the frozen seed plan: ' + seed)
             value = float(row['value'])
@@ -58,8 +74,17 @@ def summarize(csv_path, control, experiment, audit_record):
             rows[key] = value
     if not rows:
         raise ValueError('CSV contains no observations')
-    output, complete = [], all(plan is not None for plan in seed_plans.values())
-    for task, metric in sorted(units):
+    required_groups = {(task, name) for plan in plans.values() for task in plan['tasks']
+                       for name, metric in plan['metrics'].items() if metric.get('required') is True}
+    output, complete = [], all(plan['declared'] for plan in plans.values())
+    missing_tasks, missing_metrics, missing_groups = {}, {}, {}
+    for exp_id, plan in plans.items():
+        observed_groups = {(key[1], key[2]) for key in rows if key[0] == exp_id}
+        missing_tasks[exp_id] = sorted(set(plan['tasks']) - {task for task, _ in observed_groups})
+        missing_metrics[exp_id] = sorted({name for name, metric in plan['metrics'].items() if metric.get('required') is True}
+                                         - {name for _, name in observed_groups})
+        missing_groups[exp_id] = [list(group) for group in sorted(required_groups - observed_groups)]
+    for task, metric in sorted(set(units) | required_groups):
         a = {k[3]: v for k, v in rows.items() if k[:3] == (control['experiment_id'], task, metric)}
         b = {k[3]: v for k, v in rows.items() if k[:3] == (experiment['experiment_id'], task, metric)}
         paired = sorted(a.keys() & b.keys(), key=int)
@@ -67,7 +92,8 @@ def summarize(csv_path, control, experiment, audit_record):
         missing_a, missing_b = sorted(expected_seeds-a.keys(), key=int), sorted(expected_seeds-b.keys(), key=int)
         complete = complete and not missing_a and not missing_b
         deltas = [b[seed]-a[seed] for seed in paired]
-        output.append({'task': task, 'metric': metric, 'unit': units[(task, metric)],
+        unit = units.get((task, metric)) or next(p['metrics'][metric]['unit'] for p in plans.values() if metric in p['metrics'])
+        output.append({'task': task, 'metric': metric, 'unit': unit,
                        'paired_seed_count': len(paired),
                        'pairs': [{'seed': seed, 'control': a[seed], 'experiment': b[seed],
                                   'delta_experiment_minus_control': b[seed]-a[seed]} for seed in paired],
@@ -82,8 +108,14 @@ def summarize(csv_path, control, experiment, audit_record):
             'control_sha256': control['manifest_sha256'], 'experiment_sha256': experiment['manifest_sha256'],
             'csv_sha256': hashlib.sha256(csv_path.read_bytes()).hexdigest(),
             'audit': expected, 'pairing_complete': bool(complete), 'groups': output,
+            'coverage': {'plan_declared': all(p['declared'] for p in plans.values()),
+                         'tasks_complete': all(p['declared'] for p in plans.values()) and not any(missing_tasks.values()),
+                         'required_metrics_complete': all(p['declared'] for p in plans.values()) and not any(missing_metrics.values()),
+                         'task_metric_groups_complete': all(p['declared'] for p in plans.values()) and not any(missing_groups.values()),
+                         'missing_tasks': missing_tasks, 'missing_metrics': missing_metrics, 'missing_task_metric_groups': missing_groups},
             'seed_plan_verified_against_declared_config': all(plan is not None for plan in seed_plans.values()),
-            'interpretation_status': 'review_required' if complete and not config_incomplete and expected['status'] == 'within_declared_scope'
+            'data_protocol_status': expected['data_protocol_status'],
+            'interpretation_status': 'review_required' if complete and not config_incomplete and expected['status'] == 'within_declared_scope' and expected['data_protocol_status'] == 'same_declared_plan'
                                      else 'incomplete_or_confounded',
             'evidence_status': 'user_supplied_observations_not_independently_reproduced',
             'mechanism_benefit_proven': False}

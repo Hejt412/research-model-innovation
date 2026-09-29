@@ -1,34 +1,61 @@
 """Conservative local Python import graph; no target modules are imported."""
 import ast
 import hashlib
+from pathlib import PurePosixPath
 
 
 def digest(tree):
     return hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest()
 
 
-def build_graph(trees):
-    modules = {}
+def module_index(trees, import_roots=('.',)):
+    modules, names = {}, {}
     for file in trees:
-        parts = file.removesuffix('.py').split('/')
-        if parts[-1] == '__init__':
-            parts.pop()
-        modules['.'.join(parts)] = file
+        for root in import_roots:
+            try:
+                relative = PurePosixPath(file).relative_to(PurePosixPath(root))
+            except ValueError:
+                continue
+            parts = str(relative).removesuffix('.py').split('/')
+            if parts[-1] == '__init__':
+                parts.pop()
+            name = '.'.join(parts)
+            modules.setdefault(name, set()).add(file)
+            names.setdefault(file, []).append(name)
+    return modules, names
+
+
+def import_base(node, file, names):
+    module = (names.get(file) or [file.removesuffix('.py').replace('/', '.')])[0]
+    package = module.split('.') if file.endswith('/__init__.py') else module.split('.')[:-1]
+    if node.level:
+        if node.level > len(package):
+            return None
+        prefix = package[:len(package)-node.level+1]
+        return '.'.join(prefix + ([node.module] if node.module else []))
+    return node.module or ''
+
+
+def build_graph(trees, import_roots=('.',)):
+    modules, names = module_index(trees, import_roots)
     graph, unknown = {}, {}
     for file, tree in trees.items():
         graph[file], unknown[file] = set(), set()
-        package = file.removesuffix('.py').split('/')[:-1]
 
         def add_module(name):
             found = False
             # Include parent package initializers as they can affect imports.
             for end in range(1, len(name.split('.')) + 1):
                 prefix = '.'.join(name.split('.')[:end])
-                target = modules.get(prefix)
-                if target and (prefix == name or target.endswith('/__init__.py')):
-                    graph[file].add(target)
-                    if prefix == name:
-                        found = True
+                candidates = modules.get(prefix, set())
+                if len(candidates) > 1:
+                    unknown[file].add('ambiguous_import:' + prefix)
+                    continue
+                for target in candidates:
+                    if prefix == name or target.endswith('/__init__.py'):
+                        graph[file].add(target)
+                        if prefix == name:
+                            found = True
             return found
 
         for node in ast.walk(tree):
@@ -37,14 +64,10 @@ def build_graph(trees):
                     if not add_module(item.name):
                         unknown[file].add(item.name)
             elif isinstance(node, ast.ImportFrom):
-                if node.level:
-                    if node.level > len(package) + 1:
-                        unknown[file].add('relative_import_beyond_root')
-                        continue
-                    prefix = package[:len(package) - node.level + 1]
-                    base = '.'.join(prefix + ([node.module] if node.module else []))
-                else:
-                    base = node.module or ''
+                base = import_base(node, file, names)
+                if base is None:
+                    unknown[file].add('relative_import_beyond_root')
+                    continue
                 base_found = add_module(base)
                 child_found = False
                 for item in node.names:

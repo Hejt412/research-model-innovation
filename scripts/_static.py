@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import tokenize
 from _dependencies import build_graph, dependencies
+from _inheritance import enrich
 
 SCHEMA = 2
 SKIP = {'.git', '.hg', '.svn', '.venv', 'venv', 'env', '__pycache__',
@@ -115,7 +116,7 @@ def resolved(node, aliases):
     return aliases.get(first, first) + (dot + rest if dot else '')
 
 
-def models(path, relative=None):
+def models(path, relative=None, include_all=False):
     source, tree = source_tree(path)
     aliases = alias_map(tree)
     classes = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
@@ -135,7 +136,7 @@ def models(path, relative=None):
     for node in classes:
         methods = [n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
         has_forward = any(n.name == 'forward' for n in methods)
-        if node.name not in detected and not has_forward:
+        if not include_all and node.name not in detected and not has_forward:
             continue
         method_rows, assignments = [], []
         for method in methods:
@@ -165,18 +166,28 @@ def models(path, relative=None):
     return result
 
 
-def read_models(root, max_bytes, exclude_dirs):
+def read_models(root, max_bytes, exclude_dirs, import_roots=None):
     root, files, skipped, errors = inventory(root, max_bytes, exclude_dirs)
+    roots = []
+    for value in import_roots or ['.']:
+        location = (root / value).resolve()
+        if not location.is_relative_to(root) or not location.is_dir():
+            raise ValueError('Import roots must be existing directories inside the scan root')
+        roots.append(location.relative_to(root).as_posix())
     rows, trees = [], {}
     for path in files:
         if path.suffix.lower() != '.py':
             continue
         try:
             _, trees[path.relative_to(root).as_posix()] = source_tree(path)
-            rows.extend(models(path, path.relative_to(root).as_posix()))
+            rows.extend(models(path, path.relative_to(root).as_posix(), include_all=True))
         except (OSError, UnicodeError, SyntaxError, ValueError, RecursionError) as exc:
             errors.append({'path': path.relative_to(root).as_posix(), 'error': str(exc)})
-    graph, unknown = build_graph(trees)
+    graph, unknown = build_graph(trees, roots)
+    enrich(rows, trees, roots)
+    # Keep candidates and local subclasses even when forward is inherited across files.
+    rows = [row for row in rows if any(m['name'] == 'forward' for m in row.get('effective_methods', []))
+            or row['detection'] == 'module_or_same_file_subclass_hint']
     for row in rows:
         row['dependencies'] = dependencies(row['file'], trees, graph, unknown)
         row['dependencies']['scan_incomplete'] = bool(errors or skipped)
@@ -187,4 +198,4 @@ def read_models(root, max_bytes, exclude_dirs):
                             'Calls are source order, not execution flow.',
                             'Shapes, parameters and FLOPs are not measured.',
                             'Gitignore is not interpreted; exclusions and skipped files are reported.'],
-            'models': rows, 'source_files': source_files, 'skipped': skipped, 'errors': errors}
+            'models': rows, 'import_roots': roots, 'source_files': source_files, 'skipped': skipped, 'errors': errors}

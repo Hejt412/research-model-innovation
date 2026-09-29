@@ -1,8 +1,8 @@
 {
-  "model": {"baseline": null, "condition_adapter": false},
-  "data": {"dataset_id": null, "split_manifest_sha256": null, "window": null, "stride": null},
-  "protocol": {"source_target": null, "target_label_access": null, "n_way": null, "shots": null, "query": null},
-  "training": {"seeds": [], "optimizer": null, "lr": null, "scheduler": null, "epochs": null, "batch_size": null, "loss": null, "augmentation": null},
-  "evaluation": {"metric": null, "direction": null, "decision_threshold": null, "checkpoint_selection": null},
-  "environment": {"python": null, "framework": null, "dependency_lock_sha256": null}
+  "model": {"baseline": {"state": "unknown"}},
+  "data": {"dataset_id": {"state": "unknown"}, "split_manifest_sha256": {"state": "unknown"}},
+  "protocol": {"split": {"state": "unknown"}, "target_label_access": {"state": "unknown"}},
+  "training": {"seeds": {"state": "unknown"}, "optimizer": {"state": "unknown"}, "lr": {"state": "unknown"}, "scheduler": {"state": "unknown"}, "augmentation": {"state": "unknown"}},
+  "evaluation": {"sampling": {"state": "unknown"}, "tasks": {"state": "unknown"}, "metrics": {"state": "unknown"}, "checkpoint_selection": {"state": "unknown"}},
+  "environment": {"python": {"state": "unknown"}, "framework": {"state": "unknown"}}
 }

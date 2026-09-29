@@ -159,6 +159,45 @@ class StaticHelpersTest(unittest.TestCase):
         self.assertEqual(model['methods'][0]['calls_in_source_order'], [])
         self.assertEqual(len(model['methods'][0]['returns']), 1)
 
+    def test_src_root_and_cross_file_inherited_components(self):
+        package = self.repo / 'src' / 'pkg'
+        package.mkdir(parents=True)
+        (package / '__init__.py').write_text('')
+        (package / 'base.py').write_text('from torch import nn\nclass Parent(nn.Module):\n    def __init__(self):\n        self.stem = nn.Linear(8, 8)\n    def forward(self, x):\n        return self.stem(x)\n')
+        (package / 'child.py').write_text('from .base import Parent\nclass Child(Parent):\n    pass\n')
+        report = json.loads(self.run_tool('analyze_models.py', self.repo, '--import-root', 'src').stdout)
+        child = next(row for row in report['models'] if row['class'] == 'Child')
+        self.assertIn('src/pkg/base.py', child['dependencies']['files'])
+        self.assertTrue(any(a['target'] == 'self.stem' for a in child['effective_assignments']))
+        self.assertEqual(child['inheritance']['ancestors'], ['src/pkg/base.py::Parent'])
+        self.assertEqual(child['effective_methods'][0]['origin'], 'src/pkg/base.py::Parent')
+
+    def test_inherited_constructor_with_and_without_super(self):
+        (self.repo / 'model.py').write_text('class Parent:\n    def __init__(self):\n        self.stem = Linear(8, 8)\n    def forward(self, x):\n        return self.stem(x)\nclass WithSuper(Parent):\n    def __init__(self):\n        super().__init__()\n        self.head = Linear(8, 3)\nclass WithoutSuper(Parent):\n    def __init__(self):\n        self.head = Linear(8, 3)\n')
+        rows = {r['class']: r for r in json.loads(self.run_tool('analyze_models.py', self.repo).stdout)['models']}
+        self.assertEqual({a['target'] for a in rows['WithSuper']['effective_assignments']}, {'self.stem', 'self.head'})
+        self.assertEqual({a['target'] for a in rows['WithoutSuper']['effective_assignments']}, {'self.head'})
+        self.assertEqual(rows['WithoutSuper']['inheritance']['status'], 'unverified_constructor_without_super')
+
+    def test_ambiguous_roots_do_not_choose_a_dependency(self):
+        for folder in ('one', 'two'):
+            (self.repo / folder).mkdir()
+            (self.repo / folder / 'helper.py').write_text('value = 1\n')
+        (self.repo / 'model.py').write_text('import helper\nclass Model:\n    def forward(self, x):\n        return x\n')
+        data = json.loads(self.run_tool('analyze_models.py', self.repo, '--import-root', '.', '--import-root', 'one', '--import-root', 'two').stdout)
+        row = next(r for r in data['models'] if r['class'] == 'Model')
+        self.assertIn('ambiguous_import:helper', row['dependencies']['unverified_imports'])
+        self.assertNotIn('one/helper.py', row['dependencies']['files'])
+
+    def test_multiple_inheritance_and_cycles_remain_unverified(self):
+        (self.repo / 'model.py').write_text('class A(B):\n    def forward(self, x):\n        return x\nclass B(A):\n    pass\nclass C(A, B):\n    def forward(self, x):\n        return x\n')
+        data = json.loads(self.run_tool('analyze_models.py', self.repo).stdout)
+        row = next(r for r in data['models'] if r['class'] == 'C')
+        self.assertEqual(row['inheritance']['status'], 'unverified_multiple_inheritance')
+
+    def test_import_root_must_stay_inside_scan_root(self):
+        self.run_tool('analyze_models.py', self.repo, '--import-root', '..', success=False)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

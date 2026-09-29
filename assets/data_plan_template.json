@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "mode": "episodic",
+  "policy": {
+    "split_disjoint_by": ["sample_id", "record_id"],
+    "support_query_disjoint_by": ["sample_id", "record_id"],
+    "task_splits": {}
+  },
+  "samples": [],
+  "episodes": []
+}
