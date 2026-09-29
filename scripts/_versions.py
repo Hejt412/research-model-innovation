@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 import subprocess
 
-RULES_VERSION = '2.0'
+RULES_VERSION = '2.1'
+KNOWN_RULES = ('2.0', RULES_VERSION)
 FORMATS = {'experiment_manifest': 2, 'experiment_audit': 2, 'observed_result_summary': 2,
            'run_ledger': 1, 'config_flow_evidence': 1}
 
@@ -50,10 +51,10 @@ def compatibility(record):
     supported = FORMATS.get(kind) if isinstance(kind, str) else None
     if supported is None or type(version) is not int or version < 1 or version > supported:
         status = 'unsupported_format'
-    elif version < supported or 'rules_version' not in record:
-        status = 'legacy_recheck_required'
-    elif record['rules_version'] != RULES_VERSION:
+    elif 'rules_version' in record and record['rules_version'] not in KNOWN_RULES:
         status = 'unsupported_rules'
+    elif version < supported or record.get('rules_version') != RULES_VERSION:
+        status = 'legacy_recheck_required'
     elif (not isinstance(record.get('producer'), dict) or not isinstance(record['producer'].get('scripts_sha256'), str)
           or len(record['producer']['scripts_sha256']) != 64
           or any(c not in '0123456789abcdef' for c in record['producer']['scripts_sha256'])):

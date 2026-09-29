@@ -6,6 +6,7 @@ from pathlib import Path
 from _records import read_json, fingerprint
 from _static import emit, source_tree, scope_nodes
 from _versions import annotate
+from _call_binding import bind_constructor
 
 
 class Unresolved(ValueError):
@@ -18,8 +19,10 @@ def value(node, env):
         return node.value
     if isinstance(node, ast.Name) and node.id in env:
         return env[node.id]
-    if isinstance(node, (ast.List, ast.Tuple)):
+    if isinstance(node, ast.List):
         return [value(n, env) for n in node.elts]
+    if isinstance(node, ast.Tuple):
+        return tuple(value(n, env) for n in node.elts)
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
         operand = value(node.operand, env)
         if type(operand) in (int, float):
@@ -42,7 +45,7 @@ def value(node, env):
         gen = node.generators[0]
         if isinstance(gen.target, ast.Name) and not gen.ifs and not gen.is_async:
             items = value(gen.iter, env)
-            if isinstance(items, list) and len(items) <= 512:
+            if isinstance(items, (list, tuple)) and len(items) <= 512:
                 return {value(node.key, {**env, gen.target.id: item}): value(node.value, {**env, gen.target.id: item}) for item in items}
     raise Unresolved('dynamic or unsupported expression')
 
@@ -90,7 +93,9 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
     # Only straight-line assignments preceding the containing statement are read.
     containing_statement = None
     for stmt in factory.body:
-        if stmt.lineno >= call.lineno or any(n is call for n in ast.walk(stmt)):
+        # AST body order distinguishes semicolon-separated statements, even
+        # when they share a line with the selected call.
+        if any(n is call for n in ast.walk(stmt)):
             containing_statement = stmt
             if not isinstance(stmt, (ast.Return, ast.Assign, ast.Expr)):
                 uncertain_context = True
@@ -127,65 +132,40 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
                 effects = possible_effects(node)
                 side_effects.extend(effects)
                 uncertain_context = uncertain_context or bool(effects)
-    positional = list(init.args.posonlyargs) + list(init.args.args)
-    defaults = dict(zip([p.arg for p in positional][-len(init.args.defaults):], init.args.defaults)) if init.args.defaults else {}
-    defaults.update({p.arg: d for p, d in zip(init.args.kwonlyargs, init.args.kw_defaults) if d is not None})
-    params = [p.arg for p in positional[1:]] + [p.arg for p in init.args.kwonlyargs]
-    passed, expressions, unknown_unpack = {}, {}, False
-    for index, arg in enumerate(call.args):
-        if isinstance(arg, ast.Starred) or index >= len(positional) - 1:
-            unknown_unpack = True
-            break
-        name = positional[index + 1].arg
-        passed[name] = arg
-        expressions[name] = ast.unparse(arg)
-    for kw in call.keywords:
-        if kw.arg is None:
-            try:
-                expanded = value(kw.value, env)
-                if not isinstance(expanded, dict) or not all(isinstance(k, str) for k in expanded):
-                    raise Unresolved()
-                for name, item in expanded.items():
-                    if name in passed:
-                        unknown_unpack = True
-                    passed[name] = ast.Constant(value=item)
-                    expressions[name] = '**' + ast.unparse(kw.value)
-            except (Unresolved, TypeError, KeyError):
-                unknown_unpack = True
-        else:
-            if kw.arg in passed:
-                unknown_unpack = True
-            passed[kw.arg], expressions[kw.arg] = kw.value, ast.unparse(kw.value)
-    binding_issues = []
-    if not init.args.kwarg:
-        binding_issues.extend('unexpected_keyword:' + name for name in sorted(set(passed) - set(params)))
-    positional_only = {p.arg for p in init.args.posonlyargs[1:]}
-    binding_issues.extend('positional_only_as_keyword:' + kw.arg for kw in call.keywords if kw.arg in positional_only)
-    rows = []
-    for name in params:
-        node = passed.get(name, defaults.get(name))
-        origin = 'forwarded' if name in passed else 'constructor_default' if name in defaults else 'required_unresolved'
+    binding = bind_constructor(init, call, lambda node: value(node, env))
+    binding_issues, unknown_unpack = binding['binding_issues'], binding['unknown_unpack']
+
+    def describe(item):
         resolved = False
         result = None
-        if node is not None and not unknown_unpack and not uncertain_context and not binding_issues:
+        if item is not None and not unknown_unpack and not uncertain_context and not binding_issues:
             try:
-                result = value(node, env if name in passed else {})
+                result = item.literal if item.materialized else value(item.node, env if item.origin == 'forwarded' else {})
                 resolved = True
             except (Unresolved, TypeError, KeyError):
                 pass
+        return {'origin': item.origin if item else 'required_unresolved',
+                'expression': item.expression if item else None,
+                'constructor_input_status': 'static_value' if resolved else 'unknown', 'constructor_input': result}
+
+    rows = []
+    for name, item in binding['named'].items():
+        description = describe(item)
         declared = name in config
-        rows.append({'parameter': name, 'origin': origin, 'expression': expressions.get(name, ast.unparse(node) if node else None),
+        result = description['constructor_input']
+        rows.append({'parameter': name, **description,
                      'declared_present': declared, 'declared_value': config.get(name),
-                     'constructor_input_status': 'static_value' if resolved else 'unknown',
-                     'constructor_input': result, 'declared_input_mismatch': declared and resolved and (type(result) is not type(config[name]) or result != config[name]),
-                     'factory_line': call.lineno, 'constructor_line': init.lineno})
+                     'declared_input_mismatch': declared and description['constructor_input_status'] == 'static_value' and (type(result) is not type(config[name]) or result != config[name]),
+                     'factory_line': call.lineno, 'factory_col_offset': call.col_offset, 'constructor_line': init.lineno})
     return annotate({'schema_version': 1, 'kind': 'config_flow_evidence', 'factory': factory_name, 'class': class_name,
             'factory_sha256': hashlib.sha256(factory_path.read_bytes()).hexdigest(),
             'model_sha256': hashlib.sha256(model_path.read_bytes()).hexdigest(), 'config_sha256': fingerprint(config),
             'parameters': rows, 'unknown_unpack': unknown_unpack, 'uncertain_factory_context': uncertain_context,
             'binding_issues': binding_issues,
+            'extra_keyword_arguments': {name: describe(item) for name, item in binding['extra_keywords'].items()},
+            'variadic_positional_arguments': [describe(item) for item in binding['variadic_positional']],
             'possible_side_effects': side_effects,
-            'unmatched_config_keys': sorted(set(config) - set(params)),
+            'unmatched_config_keys': sorted(set(config) - set(binding['named'])),
             'constructor_binding_verified': False, 'runtime_instance_verified': False,
             'limitations': ['The caller selects the factory/class binding; imports, aliases and decorators are not executed.',
                            'Constructor inputs are not final attributes: guards, internal overrides, inheritance and .to() effects need review.',

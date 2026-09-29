@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
 from _records import read_json, seal, manifest, fingerprint
-from _versions import compatibility, producer, scripts_digest
+from _versions import RULES_VERSION, compatibility, producer, scripts_digest
 from experiment_manifest import snapshot, audit
 from import_results import summarize
 from record_versions import check, migrate, unwrap
@@ -279,7 +279,7 @@ class VersionTests(unittest.TestCase):
             manifest(self.source)
 
     def test_rules_version_and_producer_are_separate_from_format(self):
-        current = {**self.old,'schema_version':2,'rules_version':'2.0','producer':producer()}
+        current = {**self.old,'schema_version':2,'rules_version':RULES_VERSION,'producer':producer()}
         self.assertEqual(compatibility(current)['status'],'supported_current')
         current['rules_version']='999.0'
         self.assertEqual(compatibility(current)['status'],'unsupported_rules')
