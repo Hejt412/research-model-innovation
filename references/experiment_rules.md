@@ -4,6 +4,8 @@ ONE INNOVATION PER EXPERIMENT：一个实验相对明确的对照，只改一个
 
 默认顺序：E0=冻结 baseline，E1=E0+A。由用户运行并提供 E1 结果后，再决定 E2；测试独立 B 用 E0+B，累积 B 用已验证的 E1+B，分别明确对照。不得提前把 A+B+C 写成一个已验证方案。可以列后续候选，但执行顺序有结果依赖。
 
+默认 A 为一个有依据的结构机制，明确原/新计算、信息路径、输入输出及恢复 baseline 的开关。E1 保持损失函数、优化器、训练策略和数据协议一致；若结构依赖新损失或训练机制才能成立，应拆分对照并披露耦合，不能把组合收益归因于结构单项。用户明确选择非结构方向时沿用单变量原则。
+
 冻结并列出：数据与 split、source/target、support/query、N-way/K-shot、窗口/步长、seed 集、epoch/step、optimizer、lr/scheduler、batch/episode、augmentation、预处理拟合范围、checkpoint 选择与评估协议。不得静默“顺便优化”这些因素。如资源约束导致额外改变，则该实验已受混杂，重新设计对照或只报探索性结果。
 
 每个方案提供：

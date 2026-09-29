@@ -1,4 +1,4 @@
 interface:
   display_name: "科研创新分析器"
-  short_description: "从模型代码出发，检索跨领域机制、核验同领域先例并设计单变量创新"
-  default_prompt: "使用 $research-model-innovation 分析当前项目，先理解 baseline，再检索跨领域论文、核验同领域先例，给出一个创新的数学与代码方案；只提供训练命令，不启动训练。"
+  short_description: "从模型代码出发，优先设计有证据支持的结构创新，核验跨领域机制与同领域先例"
+  default_prompt: "使用 $research-model-innovation 分析当前项目，先理解 baseline，再检索跨领域机制、核验同领域先例，优先给出一个模型结构创新的数学、代码与单变量实验方案；只提供训练命令，不启动训练。"
