@@ -286,10 +286,17 @@ class StatisticsTests(unittest.TestCase):
                         rows.append({'experiment_id': exp['experiment_id'], 'seed': seed, 'task': task, 'metric': metric['name'],
                                      'unit': metric['unit'], 'value': .6 + (.02+seed*.005 if exp is helper.b else 0), 'manifest_sha256': exp['manifest_sha256']})
         report = helper.result(rows)
+        self.assertEqual(report['groups'][0]['decision'], 'not_assessed')
+        self.assertEqual(report['run_provenance']['status'], 'not_supplied')
+        from run_fixture import make_ledger, write_csv
+        from import_results import summarize
+        run_rows, ledger = make_ledger(helper.root / 'runs', rows)
+        write_csv(helper.csv, run_rows)
+        report = summarize(helper.csv, helper.a, helper.b, helper.check, ledger)
         self.assertEqual(report['groups'][0]['decision'], 'threshold_supported_exploratory')
         helper.a['skipped'].append({'path': 'large.py', 'reason': 'size_limit'})
         helper.check = audit(helper.a, helper.b, 'adapter', ['/model/adapter'], [])
-        report = helper.result(rows)
+        report = summarize(helper.csv, helper.a, helper.b, helper.check, ledger)
         self.assertEqual(report['interpretation_status'], 'incomplete_or_confounded')
         self.assertEqual(report['groups'][0]['statistics']['status'], 'blocked_incomplete_or_confounded')
 

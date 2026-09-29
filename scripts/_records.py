@@ -5,6 +5,10 @@ from pathlib import Path
 
 
 def read_json(path):
+    return loads_json(Path(path).read_text(encoding='utf-8-sig'))
+
+
+def loads_json(text):
     def reject_constant(value):
         raise ValueError('Non-finite JSON number: ' + value)
     def unique_object(pairs):
@@ -14,7 +18,7 @@ def read_json(path):
                 raise ValueError('Duplicate JSON key: ' + key)
             result[key] = value
         return result
-    return json.loads(Path(path).read_text(encoding='utf-8-sig'), parse_constant=reject_constant,
+    return json.loads(text, parse_constant=reject_constant,
                       object_pairs_hook=unique_object)
 
 
@@ -28,14 +32,17 @@ def seal(record):
 
 
 def manifest(path):
-    value = read_json(path)
+    from record_versions import unwrap
+    from _versions import require_readable
+    value = unwrap(read_json(path))
     if not isinstance(value, dict):
         raise ValueError('Manifest must be an object')
     content = {key: item for key, item in value.items() if key != 'manifest_sha256'}
     if value.get('manifest_sha256') != fingerprint(content):
         raise ValueError('Manifest fingerprint mismatch')
-    if value.get('schema_version') != 1 or value.get('kind') != 'experiment_manifest':
+    if value.get('kind') != 'experiment_manifest':
         raise ValueError('Unsupported experiment manifest')
+    require_readable(value)
     if not isinstance(value.get('config'), dict) or not isinstance(value.get('files'), dict):
         raise ValueError('Manifest config/files must be objects')
     return value

@@ -64,6 +64,8 @@ evals/            离线科研任务样本（合成资料）
 | `import_results.py` | 导入用户 CSV，按 seed 配对、检查来源并追加历史 |
 | `literature_ledger.py` | 文献去重、版本归组、主张证据检查及增量检索计划 |
 | `data_protocol.py` | 核对样本/记录/设备划分和有序 support/query episode 清单 |
+| `run_records.py` | 核对运行、权重/日志字节摘要、评估回执与原始结果，排查重复来源 |
+| `record_versions.py` | 只读检查记录版本，创建保留原始字节的归档封套 |
 
 模型比较支持本地传递依赖、外部辅助函数变化以及两个指定模型的直接比较。未核验的依赖会明确标记，不将类源码未变等同于模型行为等价。
 
@@ -72,6 +74,8 @@ evals/            离线科研任务样本（合成资料）
 组件证据保留条件分支及赋值来源。manifest 单独检查源码冻结覆盖与关键依赖，few-shot 清单核对类别和 N-way/K-shot/query/episode 数量。可选的 [配对统计](references/statistical_decisions.md) 按预声明阈值给出探索性区间，证据不足时保持未判定。
 
 [参数追踪](references/config_flow.md) 不执行项目；另附 assets/verify_instance.py 供用户在审阅后的环境自行核验实例。该脚本会导入用户选定的工厂，不属于 Codex 自动静态检查流程。
+
+参数追踪对潜在副作用保留 unknown。统计判定还须关联 [真实运行来源](references/run_provenance.md)，不把不同 seed 或文件名当作独立训练证明。新实验记录分开保存 [格式、规则和工具版本](references/record_versions.md)，旧记录迁移保留原始字节及结果来源引用。
 
 实验、结果及文献命令详见 [证据工具说明](references/evidence_tools.md)。缺口分析按观测证据分档，机制归因考虑容量/计算预算等竞争解释，见 [缺口优先级与机制验证](references/gap_validation.md)。
 

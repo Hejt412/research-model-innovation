@@ -11,13 +11,18 @@ from _static import emit
 from experiment_manifest import audit
 from _config_schema import evaluation_plan, validate_config
 from _paired_statistics import assess
+from _versions import annotate, require_readable
+from run_records import verify as verify_runs
 
 
-def summarize(csv_path, control, experiment, audit_record):
+def summarize(csv_path, control, experiment, audit_record, run_records=None):
+    audit_version = require_readable(audit_record)
     # Recompute the audit instead of trusting a hand-edited status field.
     expected = audit(control, experiment, audit_record['factor'],
                      audit_record['declared_config_paths'], audit_record['declared_files'])
-    if audit_record != expected:
+    # Producer identity can differ across clean checkouts/installations running
+    # identical rules. Recompute all substantive fields, not the producer stamp.
+    if {k: v for k, v in audit_record.items() if k != 'producer'} != {k: v for k, v in expected.items() if k != 'producer'}:
         raise ValueError('Audit does not match the supplied manifests/declaration')
     config_incomplete = any(expected['unresolved_config_paths'].values())
     ids = {control['experiment_id']: control, experiment['experiment_id']: experiment}
@@ -28,7 +33,7 @@ def summarize(csv_path, control, experiment, audit_record):
         if invalid:
             raise ValueError('Invalid declared configuration: ' + str(invalid))
         seed_plans[exp_id] = set(plans[exp_id]['seeds']) or None
-    rows, units = {}, {}
+    rows, units, source_rows = {}, {}, []
     with csv_path.open(encoding='utf-8-sig', newline='') as handle:
         reader = csv.DictReader(handle)
         required = {'experiment_id', 'seed', 'task', 'metric', 'value', 'unit', 'manifest_sha256'}
@@ -39,7 +44,10 @@ def summarize(csv_path, control, experiment, audit_record):
         for number, row in enumerate(reader, 2):
             if any(not isinstance(row.get(k), str) or not row[k].strip() for k in required):
                 raise ValueError(f'Blank or malformed required CSV value at line {number}')
+            run_id = row.get('run_id')
             row = {key: row[key].strip() for key in required}
+            if isinstance(run_id, str) and run_id.strip():
+                row['run_id'] = run_id.strip()
             exp = row['experiment_id']
             if exp not in ids:
                 raise ValueError(f'Unknown experiment ID at line {number}: {exp}')
@@ -73,6 +81,7 @@ def summarize(csv_path, control, experiment, audit_record):
             if key in rows:
                 raise ValueError('Duplicate experiment/task/metric/seed observation: ' + str(key))
             rows[key] = value
+            source_rows.append({**row, 'seed': seed})
     if not rows:
         raise ValueError('CSV contains no observations')
     required_groups = {(task, name) for plan in plans.values() for task in plan['tasks']
@@ -106,7 +115,10 @@ def summarize(csv_path, control, experiment, audit_record):
                        'ci': None, 'decision': 'interpret_against_predeclared_metric_direction_and_threshold'})
     eligible = bool(complete and not config_incomplete and expected['status'] == 'within_declared_scope'
                     and expected['data_protocol_status'] == 'same_declared_plan'
-                    and expected['source_coverage']['status'] == 'complete_in_declared_scope')
+                    and expected['source_coverage']['status'] == 'complete_in_declared_scope'
+                    and audit_version['status'] == 'supported_current'
+                    and all(v['status'] == 'supported_current' for v in expected['input_versions'].values()))
+    run_provenance = verify_runs(run_records, ids, source_rows)
     stats_a = control['config'].get('evaluation', {}).get('statistics')
     stats_b = experiment['config'].get('evaluation', {}).get('statistics')
     for group in output:
@@ -119,14 +131,16 @@ def summarize(csv_path, control, experiment, audit_record):
         else:
             stats = stats_a or stats_b
         assessment = assess([pair['delta_experiment_minus_control'] for pair in group['pairs']], metric_a or metric_b,
-                            stats, eligible and declaration_equal)
+                            stats, eligible and declaration_equal and run_provenance['statistical_use_allowed'])
         group.update({'statistics': assessment, 'ci': assessment['ci'], 'decision': assessment['decision'],
                       'direction': metric_a.get('direction'), 'min_improvement': metric_a.get('min_improvement')})
-    return {'schema_version': 1, 'kind': 'observed_result_summary',
+    return annotate({'schema_version': 2, 'kind': 'observed_result_summary',
             'control_id': control['experiment_id'], 'experiment_id': experiment['experiment_id'],
             'control_sha256': control['manifest_sha256'], 'experiment_sha256': experiment['manifest_sha256'],
             'csv_sha256': hashlib.sha256(csv_path.read_bytes()).hexdigest(),
             'audit': expected, 'pairing_complete': bool(complete), 'groups': output,
+            'supplied_audit_producer': audit_record.get('producer'),
+            'run_provenance': run_provenance,
             'coverage': {'plan_declared': all(p['declared'] for p in plans.values()),
                          'tasks_complete': all(p['declared'] for p in plans.values()) and not any(missing_tasks.values()),
                          'required_metrics_complete': all(p['declared'] for p in plans.values()) and not any(missing_metrics.values()),
@@ -137,7 +151,7 @@ def summarize(csv_path, control, experiment, audit_record):
             'interpretation_status': 'review_required' if eligible
                                      else 'incomplete_or_confounded',
             'evidence_status': 'user_supplied_observations_not_independently_reproduced',
-            'mechanism_benefit_proven': False}
+            'mechanism_benefit_proven': False})
 
 
 def append_history(path, report):
@@ -176,9 +190,11 @@ def main():
     p.add_argument('--audit', type=Path, required=True)
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--history', type=Path, help='Append an idempotent entry to project research_history.md')
+    p.add_argument('--run-records', type=Path, help='Completed-run ledger; missing/conflicting provenance blocks statistical decisions')
     args = p.parse_args()
     try:
-        report = summarize(args.csv, manifest(args.control), manifest(args.experiment), read_json(args.audit))
+        from record_versions import unwrap
+        report = summarize(args.csv, manifest(args.control), manifest(args.experiment), unwrap(read_json(args.audit)), args.run_records)
         emit(report, args.out)
         if args.history:
             append_history(args.history, report)

@@ -23,6 +23,8 @@ python "%SKILL_DIR%\scripts\experiment_manifest.py" check "D:\research\records\e
 
 CSV 格式参考 [结果表头](../assets/results_template.csv)。每行是一个实验 × seed × task × metric 的用户观测，必须包含单位和对应 manifest SHA-256。
 
+描述性导入仍兼容原有七列；要进行 CI/阈值判定，增加 run_id 列并提供 --run-records，按 [运行来源规范](run_provenance.md) 关联已完成运行的原始文件。旧材料不足时保留未知，不用补造记录来通过检查。
+
 `unit` 可以是 fraction、percent 或明确的其他单位；不自动换算，不把百分比增量误称相对提升。一个 task/metric 内单位必须一致。相同实验/seed/task/metric 重复、非有限数、未知实验和摘要不符会拒绝；缺失 seed 列明，不补值。相同 seed 只有在固定采样/协议一致时才构成有意义的配对。
 
 ```bat
@@ -34,6 +36,8 @@ python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv"
 可选启用 [配对统计与阈值判定](statistical_decisions.md)。只有明确方法/独立单位/阈值、配对及证据完整时才生成探索性 CI；缺失、声明差异、源码冻结缺口或 few-shot 未核验会阻止判定。未启用时继续保留描述统计。
 
 审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按结果摘要指纹幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
+
+新实验记录含规则和工具身份，manifest/audit/summary 的格式已升级为 2。旧记录的兼容检查、无损归档和重新审查步骤见 [版本规范](record_versions.md)；不静默更新原文件或旧 CSV 引用。
 
 ## 文献账本
 

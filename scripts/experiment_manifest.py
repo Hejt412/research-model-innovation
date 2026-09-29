@@ -7,6 +7,7 @@ from _records import changes, manifest, read_json, seal
 from _config_schema import evaluation_plan, validate_config
 from data_protocol import inspect_plan
 from _source_coverage import coverage, compare_coverage
+from _versions import annotate, require_readable
 
 
 def unresolved_paths(value, path=''):
@@ -51,7 +52,7 @@ def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None, 
                 data_report['issues'].append({'kind': 'unplanned_task_seed_episodes', 'task': task, 'seed': seed})
         if data_report['issues']:
             data_report['status'] = 'protocol_conflicts'
-    record = {'schema_version': 1, 'kind': 'experiment_manifest', 'experiment_id': experiment_id,
+    record = {'schema_version': 2, 'kind': 'experiment_manifest', 'experiment_id': experiment_id,
                  'control_id': control_id, 'config': config, 'files': files, 'skipped': skipped,
                  'unresolved_config_paths': unresolved_paths(config),
                  'config_validation': validation,
@@ -61,10 +62,11 @@ def snapshot(root, config_path, experiment_id, control_id=None, data_plan=None, 
                  'source_scope': {'required_files': sorted(set(required)), 'max_bytes': max_bytes,
                                   'exclude_dirs': sorted(set(exclude_dirs))}}
     record['source_coverage'] = coverage(record)
-    return seal(record)
+    return seal(annotate(record))
 
 
 def audit(before, after, factor, config_paths, allowed_files):
+    versions = {'control': require_readable(before), 'experiment': require_readable(after)}
     if before['experiment_id'] == after['experiment_id']:
         raise ValueError('Control and experiment IDs must differ')
     if after['control_id'] != before['experiment_id']:
@@ -83,7 +85,8 @@ def audit(before, after, factor, config_paths, allowed_files):
                    'protocol_conflicts' if left_data['issues'] or right_data['issues'] else
                    'few_shot_unverified' if any(d.get('mode') == 'episodic' and d.get('few_shot', {}).get('status') != 'declared_counts_consistent' for d in (left_data, right_data)) else
                    'declared_plan_changed' if left_data['plan_sha256'] != right_data['plan_sha256'] else 'same_declared_plan')
-    return {'schema_version': 1, 'kind': 'experiment_audit', 'status': status, 'factor': factor,
+    return annotate({'schema_version': 2, 'kind': 'experiment_audit', 'status': status, 'factor': factor,
+            'input_versions': versions,
             'control_sha256': before['manifest_sha256'], 'experiment_sha256': after['manifest_sha256'],
             'declared_config_paths': sorted(config_paths), 'declared_files': sorted(allowed_files),
             'config_changes': delta, 'file_changes': files,
@@ -96,7 +99,7 @@ def audit(before, after, factor, config_paths, allowed_files):
             'skipped': {'control': before['skipped'], 'experiment': after['skipped']},
             'single_factor_causality_verified': False,
             'review_required': 'Review the actual diff: one allowed file can contain multiple independent changes. '
-                               'Config overrides, binary datasets and runtime state are not verified.'}
+                               'Config overrides, binary datasets and runtime state are not verified.'})
 
 
 def main():

@@ -55,6 +55,8 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 
 同时核对源码冻结覆盖和声明的关键依赖；修改范围合规不能弥补漏冻结。Few-shot 清单检查类别身份、N-way/K-shot、query 数量和每 seed 的 episode 数。需要统计判定时按 [配对统计规范](references/statistical_decisions.md) 预声明方向、阈值和独立重复单位；证据不完整、重复不足或声明不一致时只保留描述统计。
 
+统计使用前按 [运行来源核验](references/run_provenance.md) 关联实际 run_id、权重、日志、评估回执和原始结果，排查同一运行被重复计数；文件摘要不同也不能证明训练独立。保存记录格式、检查规则与工具身份；旧记录按 [版本与迁移](references/record_versions.md) 只读检查并保留原始字节，不能凭升级工具改写历史来源或结论。
+
 ## 报告与连续研究
 
 按 [输出格式](references/output_format.md) 和 [报告模板](assets/research_report_template.md) 交付。完整分析使用全部章节；仅架构分析等局部请求只输出适用章节，明确其余未执行，不强制越过用户范围。

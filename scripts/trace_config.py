@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 from _records import read_json, fingerprint
 from _static import emit, source_tree, scope_nodes
+from _versions import annotate
 
 
 class Unresolved(ValueError):
@@ -66,23 +67,66 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
     call, init = calls[0], constructors[0]
     env = {config_param: config}
     uncertain_context = bool(factory.decorator_list or cls.decorator_list or init.decorator_list or isinstance(factory, ast.AsyncFunctionDef))
+    side_effects = []
+
+    def possible_effects(expression):
+        # Whitelisted cfg.get on a supplied plain JSON mapping is read-only.
+        # All other calls, assignment expressions, yields and awaits can affect
+        # subsequent argument reads. Do not execute them to find out.
+        found = []
+        for node in ast.walk(expression):
+            if isinstance(node, ast.Call):
+                safe = False
+                if isinstance(node.func, ast.Attribute) and node.func.attr == 'get':
+                    try:
+                        safe = isinstance(value(node.func.value, env), dict) and not node.keywords and 1 <= len(node.args) <= 2
+                    except (Unresolved, TypeError, KeyError):
+                        pass
+                if not safe:
+                    found.append({'line': node.lineno, 'expression': ast.unparse(node), 'reason': 'call_may_mutate_state'})
+            elif isinstance(node, (ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)):
+                found.append({'line': node.lineno, 'expression': ast.unparse(node), 'reason': 'stateful_expression'})
+        return found
     # Only straight-line assignments preceding the containing statement are read.
+    containing_statement = None
     for stmt in factory.body:
         if stmt.lineno >= call.lineno or any(n is call for n in ast.walk(stmt)):
+            containing_statement = stmt
             if not isinstance(stmt, (ast.Return, ast.Assign, ast.Expr)):
                 uncertain_context = True
             break
         if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
             continue
         if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+            effects = possible_effects(stmt.value)
+            side_effects.extend(effects)
+            uncertain_context = uncertain_context or bool(effects)
             name = stmt.targets[0].id
             try:
                 env[name] = value(stmt.value, env)
             except (Unresolved, TypeError, KeyError):
                 env.pop(name, None)
+                uncertain_context = True
         else:
             # Calls/branches can mutate config or rebind factory locals.
             uncertain_context = True
+    # Conservatively taint the entire call when any argument can mutate state;
+    # this also covers positional expressions and **build_kwargs(cfg).
+    for expression in [*call.args, *(kw.value for kw in call.keywords)]:
+        effects = possible_effects(expression)
+        side_effects.extend(effects)
+        uncertain_context = uncertain_context or bool(effects)
+    if containing_statement is not None:
+        inside_call = {id(n) for n in ast.walk(call)}
+        for node in ast.walk(containing_statement):
+            if isinstance(node, (ast.Call, ast.NamedExpr, ast.Await)) and id(node) not in inside_call:
+                # Enclosing calls, e.g. Model(...).to(device), occur after
+                # construction; inspect their siblings without tainting on .to.
+                if any(n is call for n in ast.walk(node)):
+                    continue
+                effects = possible_effects(node)
+                side_effects.extend(effects)
+                uncertain_context = uncertain_context or bool(effects)
     positional = list(init.args.posonlyargs) + list(init.args.args)
     defaults = dict(zip([p.arg for p in positional][-len(init.args.defaults):], init.args.defaults)) if init.args.defaults else {}
     defaults.update({p.arg: d for p, d in zip(init.args.kwonlyargs, init.args.kw_defaults) if d is not None})
@@ -135,16 +179,17 @@ def trace(factory_path, factory_name, model_path, class_name, config, config_par
                      'constructor_input_status': 'static_value' if resolved else 'unknown',
                      'constructor_input': result, 'declared_input_mismatch': declared and resolved and (type(result) is not type(config[name]) or result != config[name]),
                      'factory_line': call.lineno, 'constructor_line': init.lineno})
-    return {'schema_version': 1, 'kind': 'config_flow_evidence', 'factory': factory_name, 'class': class_name,
+    return annotate({'schema_version': 1, 'kind': 'config_flow_evidence', 'factory': factory_name, 'class': class_name,
             'factory_sha256': hashlib.sha256(factory_path.read_bytes()).hexdigest(),
             'model_sha256': hashlib.sha256(model_path.read_bytes()).hexdigest(), 'config_sha256': fingerprint(config),
             'parameters': rows, 'unknown_unpack': unknown_unpack, 'uncertain_factory_context': uncertain_context,
             'binding_issues': binding_issues,
+            'possible_side_effects': side_effects,
             'unmatched_config_keys': sorted(set(config) - set(params)),
             'constructor_binding_verified': False, 'runtime_instance_verified': False,
             'limitations': ['The caller selects the factory/class binding; imports, aliases and decorators are not executed.',
                            'Constructor inputs are not final attributes: guards, internal overrides, inheritance and .to() effects need review.',
-                           'Config keys may have aliases; unmatched keys do not prove they are unused.']}
+                           'Config keys may have aliases; unmatched keys do not prove they are unused.']})
 
 
 def main():
