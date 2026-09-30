@@ -1,12 +1,22 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "probe_kwargs": {},
+  "context": null,
   "cases": [
     {
-      "id": "replace-with-a-reviewed-case",
-      "input_shapes": {"state": "unknown"},
-      "expected_outputs": {"state": "unknown"}
+      "id": "replace-with-real-case",
+      "input_shapes": {
+        "input": "unknown"
+      },
+      "expected_outputs": {
+        "output": "unknown"
+      }
     }
   ],
-  "comparison": {"atol": {"state": "unknown"}, "rtol": {"state": "unknown"}}
+  "comparison": {
+    "atol": "unknown",
+    "rtol": "unknown"
+  },
+  "mechanism_checks": [],
+  "relations": []
 }

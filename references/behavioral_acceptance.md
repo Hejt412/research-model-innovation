@@ -24,6 +24,8 @@ python -X utf8 -m unittest discover -s tests -v
 
 结构核验入口只在合成适配模块/数值上测试：拒绝未启用导入，检查案例与输出覆盖、维度/元素数/有限值、容差和 setup 未确认。CLI 合成模块只返回固定数值，不构造模型、导入 torch 或训练。这些回归检验报告检查器，不证明用户模型 forward 可行。
 
+新核验回归覆盖极大数溢出、误差定位、原观测归档、离线不导入、摘要不符、源码前后变化及重复复核不清除来源问题。机制执行/门控和批次映射、因果前缀、状态重置/分块关系都只用固定数值合成记录测试，不执行模型。spec1兼容；spec2新规则无效时不得导入。
+
 ## 行为验收
 
 将 [验收请求](../evals/request.md)、本 Skill 和 `evals/fixtures` 交给未参与实现的评估者；不要预告预期结论。仅允许读输入、运行静态工具，在独立临时目录保存报告。该 fixture 是现实工作流的合成样本，不是真实论文、训练记录或用户项目。
@@ -45,6 +47,12 @@ python -X utf8 -m unittest discover -s tests -v
 将 [案例01](../evals/structure_priority/request_01.md)、[案例02](../evals/structure_priority/request_02.md)、[案例03](../evals/structure_priority/request_03.md)、[案例04](../evals/structure_priority/request_04.md) 和其 fixtures 交给独立评估者分别完成；不预告维护者 [判定标准](../evals/structure_priority/rubric.md)。覆盖默认结构选择、结构不可行、用户明确非结构方向和明确资源上限。仍仅允许阅读/静态工具，不运行模型。
 
 审查实际选择、引用及方案，确认结构偏好服从证据、可行性、用户要求和预算；涉及结构时核对设计条件、机制观测及用户运行核验计划。不把自动工具测试通过当作这些案例已验收。保存报告、输入版本和维护者证据复核；一次通过仅覆盖给定场景。
+
+## 结构生成与机制比较验收
+
+独立执行 [05自主设计](../evals/structure_design/request_05.md)、[06概念等价先例](../evals/structure_design/request_06.md)、[07具体参数化预算](../evals/structure_design/request_07.md)，只给相关原始 fixtures，不提供 [维护者标准](../evals/structure_design/rubric.md) 或预期答案。05不预置候选；06仅凭不同名称不能避开完整方法重合；07允许独立缩减方案并要求重算。判断实际计算、证据与决策，不能只检查推荐了某个名称。
+
+同样仅阅读/静态工具、不联网、不执行模型、不给原始材料之外的论文事实。完成后保存实际报告/输入摘要与维护者复核；合成全文片段仅检验比较行为，不冒充真实联网查新。真实检索质量仍需在实际研究请求中对原始文献抽查，本次离线测试不能替代。
 
 ## 真实项目验收
 

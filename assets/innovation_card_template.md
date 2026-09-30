@@ -21,5 +21,6 @@
 - manifest/差异审查/竞争解释及容量对照：{{manifest, audit, alternative_explanations, matched_control}}
 - 难度/开销与未知项：{{cost}}
 - 用户预算/估计/用户实测/测量条件：{{resource_limits_estimates_observations_and_context}}
-- 用户结构核验计划或结果：{{adapter_spec_source_fingerprints_shapes_finite_disabled_equivalence_or_not_run}}
+- 用户结构核验计划或结果：{{adapter_spec_raw_archive_offline_recheck_source_before_after_context_shapes_finite_disabled_equivalence_or_not_run}}
+- 机制/状态检查及适用范围：{{execution_observables_declared_relations_zero_initialization_and_task_semantics_or_not_applicable}}
 - 机制指纹/历史链接：{{fingerprint, H-ID}}

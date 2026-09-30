@@ -212,7 +212,7 @@ class StructureProbeTests(unittest.TestCase):
     def test_strict_json_rejects_duplicates_and_constants(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'input.json'
-            for content in ('{"id":1,"id":2}','{"x":NaN}'):
+            for content in ('{"id":1,"id":2}','{"x":NaN}','{"x":1e400}'):
                 path.write_text(content)
                 with self.assertRaises(ValueError):
                     probe.load_json(path)
