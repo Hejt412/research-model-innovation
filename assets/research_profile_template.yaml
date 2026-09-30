@@ -12,6 +12,14 @@ models:
   compared_models: []
 research_goal:
   primary: null
+# 可选项目上限；null 表示未指定，不代表成本已满足。
+resource_budget:
+  max_parameter_increase_fraction: null
+  max_peak_memory_mib: null
+  max_latency_ms: null
+  measurement_context: null
+  implementation_complexity_limit: null
+  evidence: []
 protocol:
   source_target: null
   target_label_access: null

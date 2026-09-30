@@ -6,6 +6,8 @@ ONE INNOVATION PER EXPERIMENT：一个实验相对明确的对照，只改一个
 
 默认 A 为一个有依据的结构机制，明确原/新计算、信息路径、输入输出及恢复 baseline 的开关。E1 保持损失函数、优化器、训练策略和数据协议一致；若结构依赖新损失或训练机制才能成立，应拆分对照并披露耦合，不能把组合收益归因于结构单项。用户明确选择非结构方向时沿用单变量原则。
 
+结构可行性、项目资源预算、机制中间观测及用户运行的 shape/禁用一致性核验按 [结构设计规范](structural_design.md) 交付。最终指标、机制观测和单次推理核验分别解释，任何一项通过都不自动证明结构机制的因果收益。
+
 冻结并列出：数据与 split、source/target、support/query、N-way/K-shot、窗口/步长、seed 集、epoch/step、optimizer、lr/scheduler、batch/episode、augmentation、预处理拟合范围、checkpoint 选择与评估协议。不得静默“顺便优化”这些因素。如资源约束导致额外改变，则该实验已受混杂，重新设计对照或只报探索性结果。
 
 每个方案提供：

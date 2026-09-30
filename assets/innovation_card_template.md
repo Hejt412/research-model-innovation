@@ -10,12 +10,16 @@
 - 原机制/公式（出处）：{{source_mechanism}}
 - 拟改造公式及符号/形状：{{proposal}}
 - 原计算 → 新计算/信息路径或状态关系/相对现有模块的实质变化：{{structural_change_or_not_applicable}}
+- 结构可行性核对及状态：{{axes_residuals_inference_information_state_interfaces, evidence_and_pending_or_blocked}}
 - 可迁移条件/所需数据/不可迁移部分：{{assumptions}}
 - 同领域最接近先例及概念重合：{{prior_art}}
 - 实质差异/重复风险/覆盖限制：{{difference, risk, coverage}}
 - 预期收益假设/反例/失败模式：{{hypothesis_and_falsifier}}
+- 机制观测位置/采集条件/预期趋势/否定条件/相关对照：{{observable_diagnostic_and_control}}
 - 文件/类/函数/真实接口：{{code_plan}}
 - 唯一实验因素/对照/冻结项：{{E-ID, control, change, invariants}}
 - manifest/差异审查/竞争解释及容量对照：{{manifest, audit, alternative_explanations, matched_control}}
 - 难度/开销与未知项：{{cost}}
+- 用户预算/估计/用户实测/测量条件：{{resource_limits_estimates_observations_and_context}}
+- 用户结构核验计划或结果：{{adapter_spec_source_fingerprints_shapes_finite_disabled_equivalence_or_not_run}}
 - 机制指纹/历史链接：{{fingerprint, H-ID}}

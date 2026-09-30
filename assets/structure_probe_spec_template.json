@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "probe_kwargs": {},
+  "cases": [
+    {
+      "id": "replace-with-a-reviewed-case",
+      "input_shapes": {"state": "unknown"},
+      "expected_outputs": {"state": "unknown"}
+    }
+  ],
+  "comparison": {"atol": {"state": "unknown"}, "rtol": {"state": "unknown"}}
+}
