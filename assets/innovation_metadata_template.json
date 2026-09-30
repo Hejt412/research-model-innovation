@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "kind": "innovation_metadata",
+  "research_id": "",
+  "innovation_id": "",
+  "gap_ids": [],
+  "paper_ids": [],
+  "history_id": "",
+  "source_card_path": "",
+  "mechanism_fingerprint": {
+    "location": "",
+    "transformation": "",
+    "data_dependencies": [],
+    "objective": ""
+  },
+  "control": {"experiment_id": "", "manifest_sha256": ""},
+  "experiment": {"experiment_id": "", "manifest_sha256": ""}
+}

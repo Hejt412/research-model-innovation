@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "behavior_case_index",
+  "shared_source_paths": [
+    "SKILL.md",
+    "references/research_workflow.md",
+    "references/gap_validation.md",
+    "references/innovation_evaluation.md",
+    "references/structural_design.md",
+    "references/experiment_rules.md",
+    "references/protocol_contract.md",
+    "references/output_format.md",
+    "references/structure_probe.md",
+    "references/paper_search_policy.md",
+    "assets/innovation_card_template.md",
+    "assets/research_report_template.md"
+  ],
+  "cases": [
+    {
+      "case_id": "01",
+      "rule_tags": [
+        "structure_priority",
+        "initialization_learnability",
+        "single_factor"
+      ],
+      "request_path": "evals/structure_priority/request_01.md",
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "02",
+      "rule_tags": [
+        "structural_feasibility",
+        "structure_priority"
+      ],
+      "request_path": "evals/structure_priority/request_02.md",
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "03",
+      "rule_tags": [
+        "user_direction",
+        "single_factor"
+      ],
+      "request_path": "evals/structure_priority/request_03.md",
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "04",
+      "rule_tags": [
+        "resource_budget",
+        "structural_feasibility"
+      ],
+      "request_path": "evals/structure_priority/request_04.md",
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "05",
+      "rule_tags": [
+        "structure_generation",
+        "initialization_learnability",
+        "single_factor"
+      ],
+      "request_path": "evals/structure_design/request_05.md",
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/project_notes.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "06",
+      "rule_tags": [
+        "prior_art_equivalence"
+      ],
+      "request_path": "evals/structure_design/request_06.md",
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/prior_art.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "07",
+      "rule_tags": [
+        "resource_budget",
+        "initialization_learnability",
+        "single_factor"
+      ],
+      "request_path": "evals/structure_design/request_07.md",
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/budget_notes.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "08",
+      "rule_tags": [
+        "initialization_learnability",
+        "single_factor"
+      ],
+      "request_path": "evals/structure_choice/request_08.md",
+      "fixture_paths": [
+        "evals/structure_choice/fixtures/model_08.py",
+        "evals/structure_choice/fixtures/project_08.md"
+      ],
+      "source_paths": []
+    },
+    {
+      "case_id": "09",
+      "rule_tags": [
+        "structure_choice",
+        "resource_budget",
+        "initialization_learnability"
+      ],
+      "request_path": "evals/structure_choice/request_09.md",
+      "fixture_paths": [
+        "evals/structure_choice/fixtures/model_09.py",
+        "evals/structure_choice/fixtures/evidence_09.md"
+      ],
+      "source_paths": []
+    }
+  ]
+}

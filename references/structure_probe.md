@@ -25,6 +25,10 @@ python "%SKILL_DIR%\assets\verify_structure.py" --observation "D:\research\recor
 
 ## Spec 与输出
 
+输出保护检查解析路径和现有文件身份，包括符号链接与硬链接；适配入口在导入前检查，离线入口也保护原观测。这不是对并发替换文件的锁定。
+
+JSON 小数按 Python binary64 浮点解析，允许正常舍入，拒绝非有限数、溢出及非零数下溢为零；例如 `1e-400` 不会作为零参与零容差核验，`5e-324` 保留为可表示的非零值。精确有理数比较针对解析后的值，不声称保留任意精度十进制。适配导出的所有对象键必须是字符串，拒绝整数键的隐式转换与循环容器；有效归档重新读取后可复算相同摘要。
+
 支持旧 spec schema_version=1，仍使用全局 setup；新 [模板](../assets/structure_probe_spec_template.json) 为2。报告 schema_version=2，旧 summary-only 报告没有原数值，不能凭摘要重建，须使用用户原始导出。实验记录 rules_version=2.2 不因此改变。
 
 spec 必须含：

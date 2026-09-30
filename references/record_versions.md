@@ -6,6 +6,8 @@
 - rules_version：检查语义，目前为 2.2。后续改变判断规则时需要更新，而不只是保持同一个格式数字。
 - producer：工具名、实际 scripts/*.py 的规范化内容摘要、可获取的 tool_commit，以及工作树是否有未提交改动。
 
+创新关联元数据 `innovation_metadata` 和 Skill 行为索引/快照/复核记录另用独立 `schema_version=1`，分别由结果导入器与 [行为版本工具](behavior_versions.md) 验证，不参与 `record_versions.py` 的实验记录迁移。它们不改变实验检查规则 2.2；[创新关联用法](evidence_tools.md)将原字节与规范内容摘要分开，行为记录将实际报告摘要与所用规则/输入快照分开。结构 spec1/2、报告2也独立，见 [核验契约](structure_probe.md)。
+
 脚本摘要将 CRLF 规范化为 LF，便于 Windows/Linux 对照。Git checkout 记录当前提交及 dirty 状态；压缩安装包可以携带 .tool-release.json（tool_commit、scripts_sha256），仅当摘要匹配时才采用提交标记。没有匹配元数据时 tool_commit=null，不能猜测最近发布版本。摘要和提交标记不是数字签名。
 
 ## 只读兼容检查

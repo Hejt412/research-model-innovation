@@ -37,6 +37,18 @@ python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv"
 
 审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按结果摘要指纹幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
 
+已有创新卡和研究身份时，可从 [机制关联元数据模板](../assets/innovation_metadata_template.json) 填写 JSON 并加 `--innovation-metadata`。这是独立的 `kind=innovation_metadata`、整数 `schema_version=1` 声明；空模板不能直接使用。须填齐 research_id、innovation_id（I-ID）、history_id（H-ID）、非空且无重复的 gap_ids（G-ID）/paper_ids（P-ID）；身份必须是非空、无空白的字符串，不自动生成，也不从文件名推断。来源卡使用 source_card_path，相对路径以元数据文件所在目录为基准，必须指向现存非空文件。
+
+mechanism_fingerprint 是四维对象：location（作用位置）、transformation（实际变换）、data_dependencies（非空字符串列表，说明使用的信息及可用条件）、objective（目标或目标函数）。location、transformation、objective 必须为非空字符串；不能用模块名或摘要哈希替代完整对象。control/experiment 各填明确的 experiment_id 和 manifest_sha256，逐项与本次输入 manifest 核对；错角色、错身份、错摘要或不支持的元数据格式均拒绝导入。字段使用模板中的确切名称，未知字段也会拒绝；内容证据仍须对照创新卡和文献人工核实。
+
+```bat
+python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv" --control "D:\research\records\e0.json" --experiment "D:\research\records\e1.json" --audit "D:\research\records\audit.json" --innovation-metadata "D:\research\records\innovation.json" --out "D:\research\records\summary.json" --history "D:\research\project\research_history.md"
+```
+
+summary 的 innovation_link 保留元数据完整内容、原文件字节摘要、规范 JSON 内容摘要、机制四维摘要，以及来源卡的解析路径与文件摘要；历史保留研究 ID、I/G/P/H 链、实验/对照及 manifest 摘要和指纹内容。相同导入幂等；元数据、来源卡或结果变化追加新条目，同研究/H-ID 的追加会注明修订并保留旧记录。旧摘要未含 innovation_link 时仍可追加历史。不提供元数据也可导入统计和历史，但明确机制身份未关联、待人工补齐，不能作为某项机制已评估的证据。
+
+这些 SHA-256 用于记录精确内容变化，不判断数学/概念等价，不自动合并同名或异名机制；关联也不证明创新性、文献真实性、机制因果或收益，不改变原来的观测/统计资格。`--out` 和 `--history` 不能与任何原始输入（含来源卡、运行账本及其原始文件）或彼此指向同一路径、符号链接目标或硬链接；检查失败时在写出前拒绝。原 CSV、manifest、audit 与既有历史保持原件。
+
 新实验记录含规则和工具身份，manifest/audit/summary 的格式已升级为 2。旧记录的兼容检查、无损归档和重新审查步骤见 [版本规范](record_versions.md)；不静默更新原文件或旧 CSV 引用。
 
 ## 文献账本

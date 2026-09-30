@@ -24,7 +24,7 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 | 文献发现/查新/选择候选 | [检索规则](references/paper_search_policy.md)、[创新评估](references/innovation_evaluation.md)；有账本时按 [证据工具](references/evidence_tools.md) 去重和增量检索 |
 | 深入结构设计/实现 | [结构设计](references/structural_design.md)、[实验规则](references/experiment_rules.md)；实现与用户核验请求另读 [核验契约](references/structure_probe.md)，冻结实验时读 [协议规范](references/protocol_contract.md) |
 | 复核已有结果/历史记录 | [证据工具](references/evidence_tools.md)、[运行来源](references/run_provenance.md)；统计判定读 [配对统计](references/statistical_decisions.md)，旧记录读 [版本迁移](references/record_versions.md) |
-| 交付/维护本 Skill | [输出规范](references/output_format.md)；维护时运行 tests/ 并按 [行为验收](references/behavioral_acceptance.md) 复核 |
+| 交付/维护本 Skill | [输出规范](references/output_format.md)；维护时运行 tests/，按 [行为验收](references/behavioral_acceptance.md) 复核并用 [版本对应](references/behavior_versions.md) 冻结来源、规划受影响案例 |
 
 只加载当前任务所需规范。架构局部请求无需展开结果来源、统计或记录迁移；必要前置证据仍须核实。
 
@@ -32,8 +32,8 @@ description: "Analyze scientific ML codebases, find transferable mechanisms in r
 
 1. 阅读项目指令、README、已有档案/历史与真实模型、数据、训练、评估入口。确认扫描范围、工厂参数传递、条件分支和有效配置，不能靠文件名或最后一次赋值猜实际组件。历史结果对照当时源码/依赖，无法对应时保留归因未知。形成有代码定位、竞争解释、最小诊断和可证伪问题的 Gap Map；concat 本身不证明交互不足。
 2. 由缺口抽象问题生成跨领域检索式，优先过去12个月，不足扩至24/36个月，用户窗口优先。同领域查新移除领域排除词，包含早期概念等价先例。打开原始方法，记录日期、query、访问范围和页/节/式；仅摘要作为线索。
-3. 候选先通过证据、迁移条件、推理信息、接口和预算筛选，再优先结构，并比较重复风险与成本。查新风险附最接近先例及覆盖限制。新参数化需要重新估算预算，不能沿用旧方案百分比；不为完成模板虚构最佳方案。
-4. 选一个因素深入：原/新数据流、轴/形状、完整公式、实际文件/类/接口、初始化与 baseline 禁用路径、机制观测/否定条件及相关对照。不能假定不存在的底层 API。结构核验由用户运行，启用路径的机制/状态检查仅在任务需要时预声明；合法零初始化不必让输出不同。
-5. 给出 E0/E1、冻结项、实际入口/配置/cmd 与结果依赖；manifest 核对声明范围、源码覆盖及 task × metric × seed 和数据/episode 计划。仅当用户返回结果时加载结果复核规范，核对真实运行、单位、配对 seed 与协议后追加历史；混杂、缺失和负结果保留，不凭文件名或相同 seed 推断独立训练/同采样。
+3. 候选先通过证据、迁移条件、推理信息、接口和预算筛选，再优先结构。多个合格结构按缺口匹配、迁移依据、风险及成本取舍，说明未选原因和最小区分诊断；成本未知保留未知，不虚构收益分数或固定候选数。查新风险附最接近先例及覆盖限制。新参数化需要重新估算预算，不能沿用旧方案百分比。
+4. 选一个因素深入：原/新数据流、轴/形状、完整公式、实际文件/类/接口、初始化与 baseline 禁用路径、机制观测/否定条件及相关对照。静态检查初始化梯度路径，区分前向成立与可学习性；需要梯度诊断时另给用户运行方案，不能加入前向核验适配器。不能假定不存在的底层 API。结构核验由用户运行，合法零初始化不必让输出不同。
+5. 给出 E0/E1、冻结项、实际入口/配置/cmd 与结果依赖；manifest 核对声明范围、源码覆盖及 task × metric × seed 和数据/episode 计划。仅当用户返回结果时加载结果复核规范，核对真实运行、单位、配对 seed 与协议后追加历史；可选创新元数据关联机制四维身份和 G/P/I/H，缺失保持未知。混杂、缺失和负结果保留，不凭文件名或相同 seed 推断独立训练/同采样。
 
 报告开头先给推荐结构及实质差异、最大未知和下一步。仅输出请求适用的内容；完整研究再按 [报告模板](assets/research_report_template.md) 展开。项目档案/历史仅保存在实际项目，沿用 [档案](assets/research_profile_template.yaml) 与 [历史模板](assets/research_history_template.md)，不强制为内联回答建文件。已有失败机制只在新证据或协议变化时重提。

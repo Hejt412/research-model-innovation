@@ -28,6 +28,8 @@ python -X utf8 -m unittest discover -s tests -v
 
 ## 行为验收
 
+维护版本对应、公共案例索引与定向复跑时读 [行为验收版本](behavior_versions.md)。先冻结实际请求、fixture 和 Skill 来源；实际报告由维护者复核后追加摘要登记。一次 passed 只覆盖记录的输入与行为范围；缺报告原件、摘要或来源不匹配都不能成为当前通过。工具不认证科研结论，也不自动调度评估模型或 CI 调用。
+
 将 [验收请求](../evals/request.md)、本 Skill 和 `evals/fixtures` 交给未参与实现的评估者；不要预告预期结论。仅允许读输入、运行静态工具，在独立临时目录保存报告。该 fixture 是现实工作流的合成样本，不是真实论文、训练记录或用户项目。
 
 评估者完成后再按以下标准审查其证据和行动：
@@ -53,6 +55,12 @@ python -X utf8 -m unittest discover -s tests -v
 独立执行 [05自主设计](../evals/structure_design/request_05.md)、[06概念等价先例](../evals/structure_design/request_06.md)、[07具体参数化预算](../evals/structure_design/request_07.md)，只给相关原始 fixtures，不提供 [维护者标准](../evals/structure_design/rubric.md) 或预期答案。05不预置候选；06仅凭不同名称不能避开完整方法重合；07允许独立缩减方案并要求重算。判断实际计算、证据与决策，不能只检查推荐了某个名称。
 
 同样仅阅读/静态工具、不联网、不执行模型、不给原始材料之外的论文事实。完成后保存实际报告/输入摘要与维护者复核；合成全文片段仅检验比较行为，不冒充真实联网查新。真实检索质量仍需在实际研究请求中对原始文献抽查，本次离线测试不能替代。
+
+## 初始化学习路径与多结构取舍
+
+独立执行 [08初始化评审](../evals/structure_choice/request_08.md) 与 [09结构取舍](../evals/structure_choice/request_09.md)，只给新版 Skill、请求和各案指定原始 fixture；[维护者标准](../evals/structure_choice/rubric.md) 不提供给执行者。08审查实际 loss、参数和初始化依赖；09比较合格结构、预算淘汰、目标与证据不足下的条件性决策。静态结论、待用户诊断和收益分别记录，不运行模型或 backward。
+
+在执行前按 [行为版本规范](behavior_versions.md) 冻结来源与输入，执行后复核实际报告并登记摘要。公共 [案例与规则索引](../evals/behavior_case_index.json) 供定向选择，历史通过不自动延续到当前来源；本轮复跑范围及限制见 [复核记录](../evals/structure-choice-acceptance-2026-09-30.md)。
 
 ## 真实项目验收
 

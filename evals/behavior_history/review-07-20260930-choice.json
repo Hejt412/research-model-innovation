@@ -1,0 +1,122 @@
+{
+  "kind": "behavior_acceptance_record",
+  "schema_version": 1,
+  "record_id": "review-07-20260930-choice",
+  "case_id": "07",
+  "frozen_snapshot": {
+    "kind": "behavior_case_snapshot",
+    "schema_version": 1,
+    "case_id": "07",
+    "case_definition_sha256": "86212e165e35e7edd3ee19632981229ada86f2a0610d96ca86a1eb1d1d40c6d8",
+    "input_snapshot": {
+      "kind": "behavior_file_snapshot",
+      "schema_version": 1,
+      "normalization": "crlf_and_cr_to_lf",
+      "files": [
+        {
+          "path": "evals/structure_design/fixtures/budget_notes.md",
+          "sha256": "d5a8dd13f876fe50e5f241614b2271d79634820a5e5f6ab15766d58be44fb973",
+          "normalized_bytes": 996
+        },
+        {
+          "path": "evals/structure_design/fixtures/model.py",
+          "sha256": "05d613dbf5817d5c133f6a1d5dd92c115c69d1fb7321133b98bfeb3089197700",
+          "normalized_bytes": 553
+        },
+        {
+          "path": "evals/structure_design/request_07.md",
+          "sha256": "fdfb83362e7bf795c6e108d7c651f6868cf765af15bda3e000843ec3592b4c14",
+          "normalized_bytes": 641
+        }
+      ],
+      "files_sha256": "9140fe57cadc2231160cc5b045a75322e4fcebf22d038cd33505726cc9595dd0"
+    },
+    "source_snapshot": {
+      "kind": "behavior_file_snapshot",
+      "schema_version": 1,
+      "normalization": "crlf_and_cr_to_lf",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "267799b9a7fd0b155b1a9e9e67d265e4381281f99991eeee59ef292bbb923c09",
+          "normalized_bytes": 6152
+        },
+        {
+          "path": "assets/innovation_card_template.md",
+          "sha256": "24adaeb8df5bad45876cd42e615588c95084f9ab97772a639df9b0d5fedf22a0",
+          "normalized_bytes": 2917
+        },
+        {
+          "path": "assets/research_report_template.md",
+          "sha256": "518fea26e0bf27b6ddc3c868430b716f8d5683556fcef909142077f7182221f6",
+          "normalized_bytes": 4613
+        },
+        {
+          "path": "references/experiment_rules.md",
+          "sha256": "3b962217c4d56e5fde76694753369953f0db2e4776eb42643c354240c182c916",
+          "normalized_bytes": 3672
+        },
+        {
+          "path": "references/gap_validation.md",
+          "sha256": "796777c36fdad12632d0a756a7a796a0ce6f5f2d86b46f54d8710884c735186f",
+          "normalized_bytes": 2327
+        },
+        {
+          "path": "references/innovation_evaluation.md",
+          "sha256": "1b648ecc6f7a528cf7a5a25f86297011055a329406337304b6d1d94c3325b8d9",
+          "normalized_bytes": 4144
+        },
+        {
+          "path": "references/output_format.md",
+          "sha256": "7ed7eb6eaed9c955aff4bd66b4ac7a28e23dc4aacddcd56c8db9acc9b2ab4083",
+          "normalized_bytes": 2048
+        },
+        {
+          "path": "references/paper_search_policy.md",
+          "sha256": "16c76c668ddf21f8502c0425698ffb4ab1f781fd7b21d0174922aaaf671f2888",
+          "normalized_bytes": 3685
+        },
+        {
+          "path": "references/protocol_contract.md",
+          "sha256": "6394906ef8a8605a35f27ed882c2b2a017e52316cf50760365f612ae983d5fb0",
+          "normalized_bytes": 7831
+        },
+        {
+          "path": "references/research_workflow.md",
+          "sha256": "33600ae4a8d2c43416d4d116a7110512b75923b68c144bb6b60ac9b93923b96e",
+          "normalized_bytes": 2701
+        },
+        {
+          "path": "references/structural_design.md",
+          "sha256": "715a5e0b650aae209cf2301e02bf874e35363c5c9760fd18288880f1ab7d13ec",
+          "normalized_bytes": 7518
+        },
+        {
+          "path": "references/structure_probe.md",
+          "sha256": "32c48f3e791b479ea2b8b10e650284ab0949f8b6f523b9132712db737f434f4a",
+          "normalized_bytes": 8579
+        }
+      ],
+      "files_sha256": "99ce70d0696b32c7b8f1179ef8dc903342ab9e70206f452f4d1cfb7bfc057d80"
+    },
+    "snapshot_sha256": "db9ccca2c2a419d914d83516f4ed257936e2398ae1632c6249c6b97feebbcd50"
+  },
+  "historical_revision": {
+    "type": "worktree",
+    "base_commit": "1530fa60d71f2127a49c763085c2da22a1bcc3eb",
+    "dirty": true
+  },
+  "report": {
+    "sha256": "b06c8eb41b561603befadba769f3f8409507c25509c5d44baf06e1725c49dc49",
+    "bytes": 8074
+  },
+  "review": {
+    "reviewer": "codex-root",
+    "reviewed_at": "2026-09-30T08:00:58Z",
+    "verdict": "passed",
+    "source_match": "confirmed",
+    "scope": "behavior_only"
+  },
+  "research_conclusions_certified": false,
+  "record_sha256": "f664368b66a2c45b328c651001ee03960759af0ae7f5e76ba8ae40d2286dcf9b"
+}

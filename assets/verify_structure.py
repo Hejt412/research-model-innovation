@@ -36,12 +36,46 @@ def load_json(path):
         value = float(item)
         if not math.isfinite(value):
             raise ValueError('JSON number exceeds finite float range: ' + item)
+        if value == 0.0 and any(c in '123456789' for c in item.lower().split('e', 1)[0]):
+            raise ValueError('Nonzero JSON number underflows to zero: ' + item)
         return value
     return json.loads(path.read_text(encoding='utf-8-sig'), object_pairs_hook=unique, parse_constant=constant, parse_float=real)
 
 
 def canonical(value):
+    active = set()
+    def keys(item):
+        if not isinstance(item, (dict, list, tuple)):
+            return
+        if id(item) in active:
+            raise ValueError('Circular JSON container')
+        active.add(id(item))
+        try:
+            if isinstance(item, dict):
+                if any(not isinstance(key, str) for key in item):
+                    raise ValueError('JSON object keys must be strings')
+                children = item.values()
+            else:
+                children = item
+            for child in children:
+                keys(child)
+        finally:
+            active.remove(id(item))
+    try:
+        keys(value)
+    except RecursionError as exc:
+        raise ValueError('JSON container nesting exceeds supported depth') from exc
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+
+
+def output_collides(output, protected):
+    resolved = output.resolve()
+    for path in protected:
+        if resolved == path.resolve():
+            return True
+        if output.exists() and path.exists() and output.samefile(path):
+            return True
+    return False
 
 
 def digest(value):
@@ -442,7 +476,7 @@ def main():
             source = adapter_source(module)
             paths = [Path(__file__).resolve(), *args.source_file, *([source] if source else [])]
             protected.extend(paths)
-            if args.out.resolve() in {p.resolve() for p in protected}:
+            if output_collides(args.out, protected):
                 raise ValueError('Output must not overwrite probe inputs or declared source files')
             before = source_snapshot(paths)
             adapter = getattr(importlib.import_module(module), name)
@@ -459,7 +493,7 @@ def main():
                                               'loaded_code_authenticated': False})
             if not confirmed:
                 report['provenance_issues'].append({'reason': 'source_changed_or_unconfirmed'})
-        if args.out.resolve() in {p.resolve() for p in protected}:
+        if output_collides(args.out, protected):
             raise ValueError('Output must not overwrite probe inputs or declared source files')
         report['issues'].extend(report['provenance_issues'])
         if report['issues']:

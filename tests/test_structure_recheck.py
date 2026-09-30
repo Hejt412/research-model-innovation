@@ -39,6 +39,86 @@ def two_cases():
 
 
 class RecheckTests(unittest.TestCase):
+    def test_nonstring_nested_keys_cannot_create_unstable_archive(self):
+        for metadata in ({2: 0, 10: 0}, {'nested': {1: 0, '1': 1}}):
+            data = observation()
+            data['metadata'] = metadata
+            report = probe.check_outputs(spec(), data)
+            self.assertEqual(report['status'], 'failed_or_unconfirmed')
+            self.assertNotIn('observation', report)
+            json.dumps(report, allow_nan=False)
+            with self.assertRaises(ValueError):
+                probe.canonical(metadata)
+
+    def test_valid_string_keys_roundtrip_with_stable_digest(self):
+        data = observation()
+        data['metadata'] = {'2': 0, '10': 0, 'nested': [{'unicode': '中文'}]}
+        report = probe.check_outputs(spec(), data)
+        restored = json.loads(json.dumps(report, ensure_ascii=False))
+        self.assertEqual(probe.digest(restored['observation']), report['observation_sha256'])
+
+    def test_circular_metadata_is_rejected_without_recursion_crash(self):
+        data = {}
+        data['self'] = data
+        with self.assertRaises(ValueError):
+            probe.canonical(data)
+        self.assertEqual(probe.safe_metadata(data)['status'], 'unavailable_non_json_or_nonfinite_data')
+
+    def test_json_underflow_rejected_and_representable_or_literal_zero_allowed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder)/'numbers.json'
+            for number in ('1e-400', '-1.25e-400', '0.0001e-9999'):
+                source.write_text(number, encoding='utf-8')
+                with self.assertRaisesRegex(ValueError, 'underflows'):
+                    probe.load_json(source)
+            for number, expected in (('0e-400', 0), ('-0.000e-99999', 0), ('5e-324', 5e-324)):
+                source.write_text(number, encoding='utf-8')
+                self.assertEqual(probe.load_json(source), expected)
+
+    def test_underflow_spec_rejected_before_adapter_import(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.files(root)
+            (root/'spec.json').write_text(json.dumps(spec()).replace('"atol": 0', '"atol": 1e-400'), encoding='utf-8')
+            (root/'adapter.py').write_text('from pathlib import Path\nPath("imported").touch()\ndef collect(spec): return {}\n')
+            result = self.cli(root, '--adapter', 'adapter:collect', '--execute-reviewed-probe')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'underflows', result.stderr)
+            self.assertFalse((root/'imported').exists())
+
+    def hardlink(self, source, target):
+        try:
+            os.link(source, target)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest('Hardlink unavailable: ' + str(exc))
+
+    def test_hardlink_output_cannot_overwrite_offline_observation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.files(root)
+            original = (root/'raw.json').read_bytes()
+            self.hardlink(root/'raw.json', root/'out.json')
+            result = self.cli(root, '--observation', str(root/'raw.json'))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'must not overwrite', result.stderr)
+            self.assertEqual((root/'raw.json').read_bytes(), original)
+
+    def test_hardlink_output_cannot_overwrite_source_before_import(self):
+        for protected_name in ('adapter.py', 'declared.py'):
+            with self.subTest(protected_name=protected_name), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                self.files(root)
+                (root/'adapter.py').write_text('from pathlib import Path\nPath("imported").touch()\ndef collect(spec): return {}\n')
+                (root/'declared.py').write_text('# inert declared source\n')
+                original = (root/protected_name).read_bytes()
+                self.hardlink(root/protected_name, root/'out.json')
+                result = self.cli(root, '--adapter', 'adapter:collect', '--execute-reviewed-probe',
+                                  '--source-file', str(root/'declared.py'))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b'must not overwrite', result.stderr)
+                self.assertFalse((root/'imported').exists())
+                self.assertEqual((root/protected_name).read_bytes(), original)
+
     def test_overflow_cannot_turn_mismatch_into_pass(self):
         plan, data = spec(), observation()
         plan['comparison'] = {'atol': 0, 'rtol': 1.9}

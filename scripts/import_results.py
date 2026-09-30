@@ -4,6 +4,7 @@ import csv
 from datetime import datetime, timezone
 import hashlib
 import math
+import os
 from pathlib import Path
 import statistics
 from _records import fingerprint, manifest, read_json
@@ -12,10 +13,11 @@ from experiment_manifest import audit
 from _config_schema import evaluation_plan, validate_config
 from _paired_statistics import assess
 from _versions import annotate, require_readable
-from run_records import verify as verify_runs
+from run_records import ARTIFACTS, verify as verify_runs
+from _innovation_metadata import link as link_innovation
 
 
-def summarize(csv_path, control, experiment, audit_record, run_records=None):
+def summarize(csv_path, control, experiment, audit_record, run_records=None, innovation_metadata=None):
     audit_version = require_readable(audit_record)
     # Recompute the audit instead of trusting a hand-edited status field.
     expected = audit(control, experiment, audit_record['factor'],
@@ -24,6 +26,7 @@ def summarize(csv_path, control, experiment, audit_record, run_records=None):
     # identical rules. Recompute all substantive fields, not the producer stamp.
     if {k: v for k, v in audit_record.items() if k != 'producer'} != {k: v for k, v in expected.items() if k != 'producer'}:
         raise ValueError('Audit does not match the supplied manifests/declaration')
+    innovation_link = link_innovation(innovation_metadata, control, experiment)
     config_incomplete = any(expected['unresolved_config_paths'].values())
     ids = {control['experiment_id']: control, experiment['experiment_id']: experiment}
     plans = {key: evaluation_plan(record['config']) for key, record in ids.items()}
@@ -141,6 +144,7 @@ def summarize(csv_path, control, experiment, audit_record, run_records=None):
             'audit': expected, 'pairing_complete': bool(complete), 'groups': output,
             'supplied_audit_producer': audit_record.get('producer'),
             'run_provenance': run_provenance,
+            'innovation_link': innovation_link,
             'coverage': {'plan_declared': all(p['declared'] for p in plans.values()),
                          'tasks_complete': all(p['declared'] for p in plans.values()) and not any(missing_tasks.values()),
                          'required_metrics_complete': all(p['declared'] for p in plans.values()) and not any(missing_metrics.values()),
@@ -164,9 +168,29 @@ def append_history(path, report):
     lines = ['\n' + marker, f'\n## {report["experiment_id"]} — 结果导入 {date}',
              '\n- 状态：evaluated（用户提供观测；不代表独立复现或机制有效）',
              '- 对照：' + report['control_id'], '- CSV SHA-256：' + report['csv_sha256'],
+             '- 对照 manifest SHA-256：' + report['control_sha256'],
              '- 实验 manifest SHA-256：' + report['experiment_sha256'],
              '- 审查状态：' + report['interpretation_status'],
              '- 唯一因素声明：' + report['audit']['factor']]
+    association = report.get('innovation_link', {})
+    if association.get('status') == 'linked_declared_metadata_review_required':
+        metadata = association['metadata']
+        history_marker = '<!-- innovation-history:' + fingerprint({k: metadata[k] for k in ('research_id', 'history_id')}) + ' -->'
+        lines[1] = f'\n## {metadata["history_id"]} — {metadata["innovation_id"]} — {report["experiment_id"]} — 结果导入 {date}'
+        lines.extend([history_marker,
+                      '- 机制身份：已关联用户元数据，待人工核对证据内容',
+                      '- 研究 ID：' + metadata['research_id'],
+                      '- I/G/P/H 关联：' + json_line({k: metadata[k] for k in ('innovation_id', 'gap_ids', 'paper_ids', 'history_id')}),
+                      '- 机制指纹（位置+变换+数据依赖+目标）：' + json_line(metadata['mechanism_fingerprint']),
+                      '- 机制指纹 SHA-256（仅精确内容比较）：' + association['mechanism_fingerprint_sha256'],
+                      '- 创新元数据原文件/内容 SHA-256：' + association['metadata_file_sha256'] + ' / ' + association['metadata_record_sha256'],
+                      '- 创新元数据路径：' + association['metadata_path'],
+                      '- 来源创新卡：' + json_line(association['source_card']),
+                      '- 指纹摘要不能判断数学/概念等价；关联不证明新颖性、机制因果或收益。'])
+        if history_marker in content:
+            lines.append('- 同研究/H-ID 的追加记录或修订：保留既有条目，本次不覆盖旧结论。')
+    else:
+        lines.append('- 机制身份：未关联；G/P/I/H、研究 ID、机制指纹及来源卡待人工补齐，未生成任何研究身份。')
     for group in report['groups']:
         lines.append('- ' + json_line(group))
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,6 +206,27 @@ def json_line(value):
     return json.dumps(value, ensure_ascii=False, allow_nan=False)
 
 
+def reject_output_aliases(outputs, inputs):
+    """Reject resolved paths and existing hard links before any result/history write."""
+    outputs = [Path(path) for path in outputs if path is not None]
+    inputs = [Path(path) for path in inputs if path is not None]
+    for index, output in enumerate(outputs):
+        for original in inputs + outputs[:index]:
+            same_path = os.path.normcase(str(output.resolve())) == os.path.normcase(str(original.resolve()))
+            same_file = output.exists() and original.exists() and os.path.samefile(output, original)
+            if same_path or same_file:
+                raise ValueError('Output/history must not overwrite an input or share a target: ' + str(output))
+
+
+def run_artifact_paths(ledger_path):
+    if ledger_path is None:
+        return []
+    from record_versions import unwrap
+    ledger = unwrap(read_json(ledger_path))
+    return [ledger_path.parent / run['artifacts'][kind]['path'] for run in ledger['runs']
+            for kind in ARTIFACTS]
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('csv', type=Path)
@@ -191,10 +236,19 @@ def main():
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--history', type=Path, help='Append an idempotent entry to project research_history.md')
     p.add_argument('--run-records', type=Path, help='Completed-run ledger; missing/conflicting provenance blocks statistical decisions')
+    p.add_argument('--innovation-metadata', type=Path, help='Explicit research/mechanism and G/P/I/H links; never infer them from filenames')
     args = p.parse_args()
     try:
         from record_versions import unwrap
-        report = summarize(args.csv, manifest(args.control), manifest(args.experiment), unwrap(read_json(args.audit)), args.run_records)
+        inputs = [args.csv, args.control, args.experiment, args.audit, args.run_records, args.innovation_metadata]
+        outputs = [args.out, args.history]
+        reject_output_aliases(outputs, inputs)
+        report = summarize(args.csv, manifest(args.control), manifest(args.experiment), unwrap(read_json(args.audit)),
+                           args.run_records, args.innovation_metadata)
+        inputs.extend(run_artifact_paths(args.run_records))
+        if args.innovation_metadata is not None:
+            inputs.append(report['innovation_link']['source_card']['path'])
+        reject_output_aliases(outputs, inputs)
         emit(report, args.out)
         if args.history:
             append_history(args.history, report)
