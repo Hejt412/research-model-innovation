@@ -1,77 +1,393 @@
 {
   "kind": "behavior_case_index",
   "schema_version": 1,
-  "shared_source_paths": ["SKILL.md"],
+  "shared_source_paths": [
+    "SKILL.md"
+  ],
   "cases": [
     {
       "case_id": "00",
-      "rule_tags": ["baseline_selection", "protocol_compatibility", "mechanism_history", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "baseline_selection",
+        "protocol_compatibility",
+        "mechanism_history",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/request.md",
-      "fixture_paths": ["evals/fixtures/evidence_packet.md", "evals/fixtures/mini_project/README.md", "evals/fixtures/mini_project/helper.py", "evals/fixtures/mini_project/model.py", "evals/fixtures/mini_project/proposal.json", "evals/fixtures/mini_project/research_history.md", "evals/fixtures/mini_project/train.py"],
-      "source_paths": ["references/research_workflow.md", "references/gap_validation.md", "references/config_flow.md", "references/innovation_evaluation.md", "references/paper_search_policy.md", "references/experiment_rules.md", "references/protocol_contract.md", "references/evidence_tools.md", "references/output_format.md"]
+      "fixture_paths": [
+        "evals/fixtures/evidence_packet.md",
+        "evals/fixtures/mini_project/README.md",
+        "evals/fixtures/mini_project/helper.py",
+        "evals/fixtures/mini_project/model.py",
+        "evals/fixtures/mini_project/proposal.json",
+        "evals/fixtures/mini_project/research_history.md",
+        "evals/fixtures/mini_project/train.py"
+      ],
+      "source_paths": [
+        "references/research_workflow.md",
+        "references/gap_validation.md",
+        "references/config_flow.md",
+        "references/innovation_evaluation.md",
+        "references/paper_search_policy.md",
+        "references/experiment_rules.md",
+        "references/protocol_contract.md",
+        "references/evidence_tools.md",
+        "references/output_format.md"
+      ]
     },
     {
       "case_id": "01",
-      "rule_tags": ["structure_choice", "structure_priority", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "structure_choice",
+        "structure_priority",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_priority/request_01.md",
-      "fixture_paths": ["evals/structure_priority/fixtures/model.py", "evals/structure_priority/fixtures/evidence.md"],
-      "source_paths": ["references/research_workflow.md", "references/gap_validation.md", "references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md", "evals/structure_priority/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": [
+        "references/research_workflow.md",
+        "references/gap_validation.md",
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md",
+        "evals/structure_priority/rubric.md"
+      ]
     },
     {
       "case_id": "02",
-      "rule_tags": ["structure_priority", "structure_feasibility", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "structure_priority",
+        "structure_feasibility",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_priority/request_02.md",
-      "fixture_paths": ["evals/structure_priority/fixtures/model.py", "evals/structure_priority/fixtures/evidence.md"],
-      "source_paths": ["references/research_workflow.md", "references/gap_validation.md", "references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md", "evals/structure_priority/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": [
+        "references/research_workflow.md",
+        "references/gap_validation.md",
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md",
+        "evals/structure_priority/rubric.md"
+      ]
     },
     {
       "case_id": "03",
-      "rule_tags": ["structure_priority", "user_direction", "single_factor", "no_training"],
+      "rule_tags": [
+        "structure_priority",
+        "user_direction",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_priority/request_03.md",
-      "fixture_paths": ["evals/structure_priority/fixtures/model.py", "evals/structure_priority/fixtures/evidence.md"],
-      "source_paths": ["references/innovation_evaluation.md", "references/experiment_rules.md", "references/output_format.md", "evals/structure_priority/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": [
+        "references/innovation_evaluation.md",
+        "references/experiment_rules.md",
+        "references/output_format.md",
+        "evals/structure_priority/rubric.md"
+      ]
     },
     {
       "case_id": "04",
-      "rule_tags": ["structure_priority", "resource_budget", "evidence_boundaries", "no_training"],
+      "rule_tags": [
+        "structure_priority",
+        "resource_budget",
+        "evidence_boundaries",
+        "no_training"
+      ],
       "request_path": "evals/structure_priority/request_04.md",
-      "fixture_paths": ["evals/structure_priority/fixtures/model.py", "evals/structure_priority/fixtures/evidence.md"],
-      "source_paths": ["references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/output_format.md", "evals/structure_priority/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_priority/fixtures/model.py",
+        "evals/structure_priority/fixtures/evidence.md"
+      ],
+      "source_paths": [
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/output_format.md",
+        "evals/structure_priority/rubric.md"
+      ]
     },
     {
       "case_id": "05",
-      "rule_tags": ["structure_design", "structure_choice", "initialization_learnability", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "structure_design",
+        "structure_choice",
+        "initialization_learnability",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_design/request_05.md",
-      "fixture_paths": ["evals/structure_design/fixtures/model.py", "evals/structure_design/fixtures/project_notes.md"],
-      "source_paths": ["references/research_workflow.md", "references/gap_validation.md", "references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md", "evals/structure_design/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/project_notes.md"
+      ],
+      "source_paths": [
+        "references/research_workflow.md",
+        "references/gap_validation.md",
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md",
+        "evals/structure_design/rubric.md"
+      ]
     },
     {
       "case_id": "06",
-      "rule_tags": ["conceptual_prior_art", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "conceptual_prior_art",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_design/request_06.md",
-      "fixture_paths": ["evals/structure_design/fixtures/model.py", "evals/structure_design/fixtures/project_notes.md", "evals/structure_design/fixtures/prior_art.md"],
-      "source_paths": ["references/innovation_evaluation.md", "references/paper_search_policy.md", "references/structural_design.md", "references/experiment_rules.md", "references/output_format.md", "evals/structure_design/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/project_notes.md",
+        "evals/structure_design/fixtures/prior_art.md"
+      ],
+      "source_paths": [
+        "references/innovation_evaluation.md",
+        "references/paper_search_policy.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/output_format.md",
+        "evals/structure_design/rubric.md"
+      ]
     },
     {
       "case_id": "07",
-      "rule_tags": ["resource_budget", "structure_design", "initialization_learnability", "evidence_boundaries", "single_factor", "no_training"],
+      "rule_tags": [
+        "resource_budget",
+        "structure_design",
+        "initialization_learnability",
+        "evidence_boundaries",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_design/request_07.md",
-      "fixture_paths": ["evals/structure_design/fixtures/model.py", "evals/structure_design/fixtures/project_notes.md", "evals/structure_design/fixtures/budget_notes.md"],
-      "source_paths": ["references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md", "evals/structure_design/rubric.md"]
+      "fixture_paths": [
+        "evals/structure_design/fixtures/model.py",
+        "evals/structure_design/fixtures/project_notes.md",
+        "evals/structure_design/fixtures/budget_notes.md"
+      ],
+      "source_paths": [
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md",
+        "evals/structure_design/rubric.md"
+      ]
     },
     {
       "case_id": "08",
-      "rule_tags": ["initialization_learnability", "single_factor", "no_training"],
+      "rule_tags": [
+        "initialization_learnability",
+        "single_factor",
+        "no_training"
+      ],
       "request_path": "evals/structure_choice/request_08.md",
-      "fixture_paths": ["evals/structure_choice/fixtures/model_08.py", "evals/structure_choice/fixtures/project_08.md"],
-      "source_paths": ["references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md"]
+      "fixture_paths": [
+        "evals/structure_choice/fixtures/model_08.py",
+        "evals/structure_choice/fixtures/project_08.md"
+      ],
+      "source_paths": [
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md"
+      ]
     },
     {
       "case_id": "09",
-      "rule_tags": ["structure_choice", "resource_budget", "initialization_learnability", "no_training"],
+      "rule_tags": [
+        "structure_choice",
+        "resource_budget",
+        "initialization_learnability",
+        "no_training",
+        "complete_prediction_function"
+      ],
       "request_path": "evals/structure_choice/request_09.md",
-      "fixture_paths": ["evals/structure_choice/fixtures/model_09.py", "evals/structure_choice/fixtures/evidence_09.md"],
-      "source_paths": ["references/innovation_evaluation.md", "references/structural_design.md", "references/experiment_rules.md", "references/structure_probe.md", "references/output_format.md"]
+      "fixture_paths": [
+        "evals/structure_choice/fixtures/model_09.py",
+        "evals/structure_choice/fixtures/evidence_09.md"
+      ],
+      "source_paths": [
+        "references/innovation_evaluation.md",
+        "references/structural_design.md",
+        "references/experiment_rules.md",
+        "references/structure_probe.md",
+        "references/output_format.md"
+      ]
+    },
+    {
+      "case_id": "10",
+      "rule_tags": [
+        "complete_prediction_function",
+        "single_factor",
+        "no_training"
+      ],
+      "request_path": "evals/function_audit/request_10.md",
+      "fixture_paths": [
+        "evals/function_audit/fixtures/model.py",
+        "evals/function_audit/fixtures/project_notes.md"
+      ],
+      "source_paths": [
+        "assets/data_plan_template.json",
+        "assets/effective_config_template.json",
+        "assets/innovation_card_template.md",
+        "assets/innovation_metadata_template.json",
+        "assets/literature_ledger_template.json",
+        "assets/literature_table_template.md",
+        "assets/research_history_template.md",
+        "assets/research_profile_template.yaml",
+        "assets/research_report_template.md",
+        "assets/run_spec_template.json",
+        "assets/structure_probe_spec_template.json",
+        "assets/verify_instance.py",
+        "assets/verify_structure.py",
+        "references/behavior_versions.md",
+        "references/behavioral_acceptance.md",
+        "references/config_flow.md",
+        "references/evidence_tools.md",
+        "references/experiment_rules.md",
+        "references/gap_validation.md",
+        "references/innovation_evaluation.md",
+        "references/live_literature_acceptance.md",
+        "references/output_format.md",
+        "references/paper_search_policy.md",
+        "references/protocol_contract.md",
+        "references/record_versions.md",
+        "references/research_workflow.md",
+        "references/run_provenance.md",
+        "references/script_usage.md",
+        "references/statistical_decisions.md",
+        "references/structural_design.md",
+        "references/structure_probe.md",
+        "scripts/_call_binding.py",
+        "scripts/_conditions.py",
+        "scripts/_config_schema.py",
+        "scripts/_dependencies.py",
+        "scripts/_few_shot.py",
+        "scripts/_inheritance.py",
+        "scripts/_innovation_metadata.py",
+        "scripts/_literature_identity.py",
+        "scripts/_paired_statistics.py",
+        "scripts/_records.py",
+        "scripts/_source_coverage.py",
+        "scripts/_static.py",
+        "scripts/_versions.py",
+        "scripts/analyze_models.py",
+        "scripts/behavior_records.py",
+        "scripts/compare_models.py",
+        "scripts/data_protocol.py",
+        "scripts/experiment_manifest.py",
+        "scripts/extract_experiment_config.py",
+        "scripts/import_results.py",
+        "scripts/literature_ledger.py",
+        "scripts/record_versions.py",
+        "scripts/run_records.py",
+        "scripts/scan_project.py",
+        "scripts/trace_config.py",
+        "evals/function_audit/rubric.md"
+      ]
+    },
+    {
+      "case_id": "11",
+      "rule_tags": [
+        "complete_prediction_function",
+        "live_literature",
+        "prior_art_equivalence",
+        "single_factor",
+        "no_training"
+      ],
+      "request_path": "evals/live_literature/request_11.md",
+      "fixture_paths": [
+        "evals/live_literature/fixtures/model.py",
+        "evals/live_literature/fixtures/project_notes.md"
+      ],
+      "source_paths": [
+        "assets/data_plan_template.json",
+        "assets/effective_config_template.json",
+        "assets/innovation_card_template.md",
+        "assets/innovation_metadata_template.json",
+        "assets/literature_ledger_template.json",
+        "assets/literature_table_template.md",
+        "assets/research_history_template.md",
+        "assets/research_profile_template.yaml",
+        "assets/research_report_template.md",
+        "assets/run_spec_template.json",
+        "assets/structure_probe_spec_template.json",
+        "assets/verify_instance.py",
+        "assets/verify_structure.py",
+        "references/behavior_versions.md",
+        "references/behavioral_acceptance.md",
+        "references/config_flow.md",
+        "references/evidence_tools.md",
+        "references/experiment_rules.md",
+        "references/gap_validation.md",
+        "references/innovation_evaluation.md",
+        "references/live_literature_acceptance.md",
+        "references/output_format.md",
+        "references/paper_search_policy.md",
+        "references/protocol_contract.md",
+        "references/record_versions.md",
+        "references/research_workflow.md",
+        "references/run_provenance.md",
+        "references/script_usage.md",
+        "references/statistical_decisions.md",
+        "references/structural_design.md",
+        "references/structure_probe.md",
+        "scripts/_call_binding.py",
+        "scripts/_conditions.py",
+        "scripts/_config_schema.py",
+        "scripts/_dependencies.py",
+        "scripts/_few_shot.py",
+        "scripts/_inheritance.py",
+        "scripts/_innovation_metadata.py",
+        "scripts/_literature_identity.py",
+        "scripts/_paired_statistics.py",
+        "scripts/_records.py",
+        "scripts/_source_coverage.py",
+        "scripts/_static.py",
+        "scripts/_versions.py",
+        "scripts/analyze_models.py",
+        "scripts/behavior_records.py",
+        "scripts/compare_models.py",
+        "scripts/data_protocol.py",
+        "scripts/experiment_manifest.py",
+        "scripts/extract_experiment_config.py",
+        "scripts/import_results.py",
+        "scripts/literature_ledger.py",
+        "scripts/record_versions.py",
+        "scripts/run_records.py",
+        "scripts/scan_project.py",
+        "scripts/trace_config.py",
+        "evals/live_literature/rubric.md"
+      ]
     }
   ]
 }

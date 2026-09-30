@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "kind": "innovation_metadata",
   "research_id": "",
   "innovation_id": "",
   "gap_ids": [],
   "paper_ids": [],
+  "literature_status": "pending_search",
   "history_id": "",
   "source_card_path": "",
   "mechanism_fingerprint": {

@@ -35,9 +35,11 @@ python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv"
 
 可选启用 [配对统计与阈值判定](statistical_decisions.md)。只有明确方法/独立单位/阈值、配对及证据完整时才生成探索性 CI；缺失、声明差异、源码冻结缺口或 few-shot 未核验会阻止判定。未启用时继续保留描述统计。
 
-审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按结果摘要指纹幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
+审查报告从 manifest 和原声明重新计算。混杂或缺失观测仍可归档，但标记 `incomplete_or_confounded`。历史条目按独立 `history_identity.version=1` 的稳定导入身份幂等追加，保留旧记录，状态为用户观测 evaluated，不表示 validated。历史默认不写，只有提供 `--history` 才追加。保留原 CSV、manifest、audit 和 summary 以便追溯。
 
-已有创新卡和研究身份时，可从 [机制关联元数据模板](../assets/innovation_metadata_template.json) 填写 JSON 并加 `--innovation-metadata`。这是独立的 `kind=innovation_metadata`、整数 `schema_version=1` 声明；空模板不能直接使用。须填齐 research_id、innovation_id（I-ID）、history_id（H-ID）、非空且无重复的 gap_ids（G-ID）/paper_ids（P-ID）；身份必须是非空、无空白的字符串，不自动生成，也不从文件名推断。来源卡使用 source_card_path，相对路径以元数据文件所在目录为基准，必须指向现存非空文件。
+已有创新卡和研究身份时，可从 [机制关联元数据模板](../assets/innovation_metadata_template.json) 填写 JSON 并加 `--innovation-metadata`。这是独立的 `kind=innovation_metadata`、整数 `schema_version=2` 声明；空模板不能直接使用。须填齐 research_id、innovation_id（I-ID）、history_id（H-ID）、非空且无重复的 gap_ids（G-ID）。身份必须是非空、无空白的字符串，schema 2 拒绝把大小写形式的 `unknown` 作为伪 ID；不自动生成，也不从文件名推断。来源卡使用 source_card_path，相对路径以元数据文件所在目录为基准，必须指向现存非空文件。
+
+schema 2 增加必填的 literature_status。已声明 P-ID 时使用 `references_declared`，paper_ids 须非空且无重复，输出 `association_completeness=complete_declared`。尚未查新时允许 paper_ids=[]，配 `pending_search` 或 `unknown`，输出 `partial_declared`，保留已知 I/G/H、四维机制、来源卡以及 E/manifest 关联；负结果也可写历史。两种完整性均只表示声明关联范围，`literature_verification=not_verified_by_tool`；不表示文献已核验或创新成立。空 P-ID 配 references_declared、非空 P-ID 配 pending_search/unknown、未支持状态和字段冲突均拒绝。旧 schema 1 仍按原格式读取，须非空 P-ID、不能加 literature_status，保留其原字符串身份读取边界，不把原记录自动改写为 schema 2；所有旧关联也需人工核验。
 
 mechanism_fingerprint 是四维对象：location（作用位置）、transformation（实际变换）、data_dependencies（非空字符串列表，说明使用的信息及可用条件）、objective（目标或目标函数）。location、transformation、objective 必须为非空字符串；不能用模块名或摘要哈希替代完整对象。control/experiment 各填明确的 experiment_id 和 manifest_sha256，逐项与本次输入 manifest 核对；错角色、错身份、错摘要或不支持的元数据格式均拒绝导入。字段使用模板中的确切名称，未知字段也会拒绝；内容证据仍须对照创新卡和文献人工核实。
 
@@ -45,7 +47,11 @@ mechanism_fingerprint 是四维对象：location（作用位置）、transformat
 python "%SKILL_DIR%\scripts\import_results.py" "D:\research\records\results.csv" --control "D:\research\records\e0.json" --experiment "D:\research\records\e1.json" --audit "D:\research\records\audit.json" --innovation-metadata "D:\research\records\innovation.json" --out "D:\research\records\summary.json" --history "D:\research\project\research_history.md"
 ```
 
-summary 的 innovation_link 保留元数据完整内容、原文件字节摘要、规范 JSON 内容摘要、机制四维摘要，以及来源卡的解析路径与文件摘要；历史保留研究 ID、I/G/P/H 链、实验/对照及 manifest 摘要和指纹内容。相同导入幂等；元数据、来源卡或结果变化追加新条目，同研究/H-ID 的追加会注明修订并保留旧记录。旧摘要未含 innovation_link 时仍可追加历史。不提供元数据也可导入统计和历史，但明确机制身份未关联、待人工补齐，不能作为某项机制已评估的证据。
+summary 的 innovation_link 保留元数据完整内容、原文件字节摘要、规范 JSON 内容摘要、机制四维摘要，以及来源卡的解析路径与文件摘要；历史保留研究 ID、I/G/P/H 链、文献状态、声明关联完整性、实验/对照及 manifest 摘要和指纹内容。完整和部分关联都可追加修订；后续补齐 P-ID 会追加新条目，同研究/H-ID 的追加会注明修订并保留旧记录。旧摘要未含 innovation_link 时仍可追加历史。不提供元数据也可导入统计和历史，但明确机制身份未关联、待人工补齐，不能作为某项机制已评估的证据。
+
+稳定导入身份只排除明确的定位字段：summary、supplied audit、重算 audit 与其 input_versions 的 producer 中 tool_commit、working_tree_dirty、commit_source；解析后的 metadata_path/source_card.path；元数据根字段 source_card_path 的值；运行账本中声明的 artifact.path。name、实际 scripts_sha256、规则、CSV 原字节摘要、manifest 身份、运行身份/原始 artifact 内容摘要与规模、四维机制、统计结果及未知字段继续影响身份。原 summary 保留这些定位字段和原文件/记录摘要；history_evidence 另外记录定位投影。元数据原文仅替换 source_card_path 的 JSON 值 token，BOM、空白、字段顺序及所有其他原文字节继续影响身份；卡片正文变更也追加。科学源码/配置路径、机制位置和数据依赖路径不会被笼统删除。运行文件损坏时保存当前可读文件的字节摘要，继续保留阻断统计判定的状态。
+
+同一证据从仓库换为相同脚本的安装包、整体目录搬迁并更新卡片/运行文件纯定位时不重复追加。真实证据、非定位元数据字节、规则或脚本源码变化仍追加。新 marker 明确标记 identity-v1；旧 marker 只有在可得原摘要的精确 hash 匹配时才识别，只有历史 marker 而没有原摘要时不能猜测旧稳定身份。较旧 summary 没有定位投影所需原件时保留其不透明摘要，可能保守追加；不重写既有历史。
 
 这些 SHA-256 用于记录精确内容变化，不判断数学/概念等价，不自动合并同名或异名机制；关联也不证明创新性、文献真实性、机制因果或收益，不改变原来的观测/统计资格。`--out` 和 `--history` 不能与任何原始输入（含来源卡、运行账本及其原始文件）或彼此指向同一路径、符号链接目标或硬链接；检查失败时在写出前拒绝。原 CSV、manifest、audit 与既有历史保持原件。
 

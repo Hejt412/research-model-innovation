@@ -6,7 +6,9 @@
 - rules_version：检查语义，目前为 2.2。后续改变判断规则时需要更新，而不只是保持同一个格式数字。
 - producer：工具名、实际 scripts/*.py 的规范化内容摘要、可获取的 tool_commit，以及工作树是否有未提交改动。
 
-创新关联元数据 `innovation_metadata` 和 Skill 行为索引/快照/复核记录另用独立 `schema_version=1`，分别由结果导入器与 [行为版本工具](behavior_versions.md) 验证，不参与 `record_versions.py` 的实验记录迁移。它们不改变实验检查规则 2.2；[创新关联用法](evidence_tools.md)将原字节与规范内容摘要分开，行为记录将实际报告摘要与所用规则/输入快照分开。结构 spec1/2、报告2也独立，见 [核验契约](structure_probe.md)。
+创新关联元数据 `innovation_metadata` 另用独立 `schema_version=2`，保留原 schema 1 读取，由结果导入器验证；schema 2 允许已知机制与实验身份先归档，文献为 paper_ids=[] 且 pending_search/unknown，不补造 P-ID，参见 [创新关联用法](evidence_tools.md)。Skill 行为索引/快照/复核记录继续用独立 `schema_version=1`，由 [行为版本工具](behavior_versions.md) 验证。两者不参与 `record_versions.py` 的实验记录迁移，也不改变实验检查规则 2.2；原字节和规范内容摘要继续分开保留，行为记录将实际报告摘要与所用规则/输入快照分开。结构 spec1/2、报告2也独立，见 [核验契约](structure_probe.md)。
+
+结果历史的稳定导入身份独立使用 `history_identity.version=1`，新 marker 为 `result-import:identity-v1:<sha256>`。它保留实际 scripts 摘要与规则身份，只排除明确的 Git/安装标记和元数据卡片/运行文件定位字段；原 summary 完整保留原路径、原文件和记录摘要，另存 history_evidence 投影。元数据非定位原字节和科学源码/配置路径不被排除。旧 marker 仅按可得原摘要精确匹配，缺原摘要时不推断旧稳定身份，也不重写原历史。这是导入幂等身份的版本，不是规则或实验记录格式升级。
 
 脚本摘要将 CRLF 规范化为 LF，便于 Windows/Linux 对照。Git checkout 记录当前提交及 dirty 状态；压缩安装包可以携带 .tool-release.json（tool_commit、scripts_sha256），仅当摘要匹配时才采用提交标记。没有匹配元数据时 tool_commit=null，不能猜测最近发布版本。摘要和提交标记不是数字签名。
 

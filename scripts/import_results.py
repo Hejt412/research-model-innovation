@@ -1,6 +1,7 @@
 """Pair user-supplied observations; never run training or infer missing results."""
 import argparse
 import csv
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import math
@@ -13,8 +14,140 @@ from experiment_manifest import audit
 from _config_schema import evaluation_plan, validate_config
 from _paired_statistics import assess
 from _versions import annotate, require_readable
-from run_records import ARTIFACTS, verify as verify_runs
+from run_records import ARTIFACTS, file_evidence, verify as verify_runs
 from _innovation_metadata import link as link_innovation
+
+
+HISTORY_IDENTITY_VERSION = 1
+PRODUCER_LOCATORS = {'tool_commit', 'working_tree_dirty', 'commit_source'}
+
+
+def producer_identity(value):
+    """Keep the actual tool source and any unknown fields; omit Git/install labels."""
+    return {k: v for k, v in value.items() if k not in PRODUCER_LOCATORS} if isinstance(value, dict) else value
+
+
+def version_identity(value):
+    value = deepcopy(value)
+    if isinstance(value, dict) and 'producer' in value:
+        value['producer'] = producer_identity(value['producer'])
+    return value
+
+
+def audit_identity(value):
+    value = version_identity(value)
+    if isinstance(value, dict) and isinstance(value.get('input_versions'), dict):
+        value['input_versions'] = {k: version_identity(v) for k, v in value['input_versions'].items()}
+    return value
+
+
+def artifact_reason_identity(reason, locators):
+    """Normalize only known file-error locator positions, never arbitrary text."""
+    if not isinstance(reason, str):
+        return reason
+    for prefix in ('Run artifacts must be nonempty regular files: ', 'Artifact changed while hashing: '):
+        if reason.startswith(prefix) and reason[len(prefix):] in locators:
+            return prefix + locators[reason[len(prefix):]]
+    if reason.startswith(('[Errno ', '[WinError ')):
+        for locator in sorted(locators, key=len, reverse=True):
+            quoted = repr(locator)
+            if reason.endswith(quoted):
+                return reason[:-len(quoted)] + repr(locators[locator])
+    return reason
+
+
+def run_history_evidence(ledger_path, provenance):
+    """Separate ledger/artifact location from run identity without changing originals.
+
+    Only declared run-artifact path fields are locators. Other paths, unknown
+    fields, run IDs, hashes, sizes, rules and actual producer scripts stay.
+    """
+    from record_versions import unwrap
+    ledger = unwrap(read_json(ledger_path))
+    record = version_identity(ledger)
+    record.pop('record_sha256', None)  # The seal includes locators; recompute from content below.
+    locators_by_run, changed = {}, []
+    for run in record['runs']:
+        locators_by_run[run['run_id']] = {}
+        for kind in ARTIFACTS:
+            artifact = run['artifacts'][kind]
+            original = artifact.pop('path')
+            resolved = str((ledger_path.parent / original).resolve())
+            token = '<run:' + run['run_id'] + ':artifact:' + kind + '>'
+            locators = locators_by_run[run['run_id']][kind] = {}
+            for locator in (resolved, str(ledger_path.parent / original)):
+                if locator:
+                    locators[locator] = token
+    issues = deepcopy(provenance['issues'])
+    for issue in issues:
+        if issue.get('kind') == 'run_ledger_version_unverified':
+            issue['version'] = version_identity(issue['version'])
+        if issue.get('kind') == 'artifact_unavailable_or_changed':
+            locators = locators_by_run[issue['run_id']][issue['artifact']]
+            issue['reason'] = artifact_reason_identity(issue.get('reason'), locators)
+        elif issue.get('kind') == 'invalid_source_log_or_results':
+            # The verifier groups receipt/results failures together. A shared
+            # path within this run must not arbitrarily acquire one file role;
+            # issue.run_id and the full ledger retain the scientific identity.
+            token = '<run:' + issue['run_id'] + ':source_artifact_locator>'
+            locators = {path: token for paths in locators_by_run[issue['run_id']].values() for path in paths}
+            issue['reason'] = artifact_reason_identity(issue.get('reason'), locators)
+        if issue.get('kind') == 'artifact_unavailable_or_changed':
+            rid, kind = issue['run_id'], issue['artifact']
+            original_run = next(run for run in ledger['runs'] if run['run_id'] == rid)
+            try:
+                current = file_evidence(ledger_path.parent / original_run['artifacts'][kind]['path'])
+                current.pop('path')
+                observed = {'status': 'available', **current}
+            except (OSError, ValueError) as exc:
+                observed = {'status': 'unavailable', 'error_type': type(exc).__name__,
+                            'errno': getattr(exc, 'errno', None)}
+            changed.append({'run_id': rid, 'artifact': kind, 'observed': observed})
+    return {'version': HISTORY_IDENTITY_VERSION, 'ledger_content': record,
+            'issues': issues, 'changed_artifacts': changed}
+
+
+def history_identity(report):
+    """Versioned exact-content identity, excluding only documented locator fields.
+
+    This does not establish scientific or mathematical equivalence. Original
+    reports retain every field and byte hash for traceability.
+    """
+    content = deepcopy(report)
+    content.pop('history_identity', None)
+    for field in ('producer', 'supplied_audit_producer'):
+        if field in content:
+            content[field] = producer_identity(content[field])
+    if 'audit' in content:
+        content['audit'] = audit_identity(content['audit'])
+    association = content.get('innovation_link')
+    if isinstance(association, dict):
+        association.pop('metadata_path', None)
+        if isinstance(association.get('source_card'), dict):
+            association['source_card'].pop('path', None)
+        evidence = association.get('history_evidence')
+        if isinstance(evidence, dict) and evidence.get('version') == HISTORY_IDENTITY_VERSION:
+            association.pop('metadata_file_sha256', None)
+            association.pop('metadata_record_sha256', None)
+            if isinstance(association.get('metadata'), dict):
+                association['metadata'].pop('source_card_path', None)
+        # Only new links carry the exact byte projection excluding the root card
+        # locator token. Older opaque raw hashes must stay; never guess their
+        # missing original bytes or erase other supplied metadata path fields.
+    provenance = content.get('run_provenance')
+    if isinstance(provenance, dict):
+        evidence = provenance.get('history_evidence')
+        if isinstance(evidence, dict) and evidence.get('version') == HISTORY_IDENTITY_VERSION:
+            provenance.pop('ledger_file_sha256', None)
+            provenance.pop('ledger_record_sha256', None)
+            provenance['issues'] = evidence['issues']
+        else:
+            # Older summaries only have opaque ledger hashes. Never invent the
+            # missing ledger content to guess a stable identity for them.
+            for issue in provenance.get('issues', []):
+                if isinstance(issue, dict) and issue.get('kind') == 'run_ledger_version_unverified':
+                    issue['version'] = version_identity(issue['version'])
+    return {'version': HISTORY_IDENTITY_VERSION, 'sha256': fingerprint(content)}
 
 
 def summarize(csv_path, control, experiment, audit_record, run_records=None, innovation_metadata=None):
@@ -122,6 +255,8 @@ def summarize(csv_path, control, experiment, audit_record, run_records=None, inn
                     and audit_version['status'] == 'supported_current'
                     and all(v['status'] == 'supported_current' for v in expected['input_versions'].values()))
     run_provenance = verify_runs(run_records, ids, source_rows)
+    if run_records is not None:
+        run_provenance['history_evidence'] = run_history_evidence(Path(run_records), run_provenance)
     stats_a = control['config'].get('evaluation', {}).get('statistics')
     stats_b = experiment['config'].get('evaluation', {}).get('statistics')
     for group in output:
@@ -137,7 +272,7 @@ def summarize(csv_path, control, experiment, audit_record, run_records=None, inn
                             stats, eligible and declaration_equal and run_provenance['statistical_use_allowed'])
         group.update({'statistics': assessment, 'ci': assessment['ci'], 'decision': assessment['decision'],
                       'direction': metric_a.get('direction'), 'min_improvement': metric_a.get('min_improvement')})
-    return annotate({'schema_version': 2, 'kind': 'observed_result_summary',
+    report = annotate({'schema_version': 2, 'kind': 'observed_result_summary',
             'control_id': control['experiment_id'], 'experiment_id': experiment['experiment_id'],
             'control_sha256': control['manifest_sha256'], 'experiment_sha256': experiment['manifest_sha256'],
             'csv_sha256': hashlib.sha256(csv_path.read_bytes()).hexdigest(),
@@ -156,13 +291,19 @@ def summarize(csv_path, control, experiment, audit_record, run_records=None, inn
                                      else 'incomplete_or_confounded',
             'evidence_status': 'user_supplied_observations_not_independently_reproduced',
             'mechanism_benefit_proven': False})
+    return {**report, 'history_identity': history_identity(report)}
 
 
 def append_history(path, report):
-    key = fingerprint(report)
-    marker = '<!-- result-import:' + key + ' -->'
+    identity = history_identity(report)
+    marker = '<!-- result-import:identity-v' + str(identity['version']) + ':' + identity['sha256'] + ' -->'
     content = path.read_text(encoding='utf-8') if path.exists() else '# 研究历史\n'
-    if marker in content:
+    # Recognize old markers only by an exact supplied report digest. A marker
+    # without its original summary cannot recover an older stable identity.
+    legacy = {'<!-- result-import:' + fingerprint(report) + ' -->'}
+    if 'history_identity' in report:
+        legacy.add('<!-- result-import:' + fingerprint({k: v for k, v in report.items() if k != 'history_identity'}) + ' -->')
+    if marker in content or any(old in content for old in legacy):
         return False
     date = datetime.now(timezone.utc).isoformat()
     lines = ['\n' + marker, f'\n## {report["experiment_id"]} — 结果导入 {date}',
@@ -171,14 +312,18 @@ def append_history(path, report):
              '- 对照 manifest SHA-256：' + report['control_sha256'],
              '- 实验 manifest SHA-256：' + report['experiment_sha256'],
              '- 审查状态：' + report['interpretation_status'],
+             '- 稳定导入身份（独立版本）：' + json_line(identity),
              '- 唯一因素声明：' + report['audit']['factor']]
     association = report.get('innovation_link', {})
-    if association.get('status') == 'linked_declared_metadata_review_required':
+    if association.get('status') in ('linked_declared_metadata_review_required',
+                                   'partially_linked_declared_metadata_review_required'):
         metadata = association['metadata']
         history_marker = '<!-- innovation-history:' + fingerprint({k: metadata[k] for k in ('research_id', 'history_id')}) + ' -->'
         lines[1] = f'\n## {metadata["history_id"]} — {metadata["innovation_id"]} — {report["experiment_id"]} — 结果导入 {date}'
         lines.extend([history_marker,
                       '- 机制身份：已关联用户元数据，待人工核对证据内容',
+                      '- 关联完整性：' + association.get('association_completeness', 'complete_declared') + '（声明完整性，不代表文献已核验）',
+                      '- 文献状态：' + association.get('literature_status', 'references_declared') + '；工具未进行查新或真实性核验',
                       '- 研究 ID：' + metadata['research_id'],
                       '- I/G/P/H 关联：' + json_line({k: metadata[k] for k in ('innovation_id', 'gap_ids', 'paper_ids', 'history_id')}),
                       '- 机制指纹（位置+变换+数据依赖+目标）：' + json_line(metadata['mechanism_fingerprint']),
@@ -236,7 +381,7 @@ def main():
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--history', type=Path, help='Append an idempotent entry to project research_history.md')
     p.add_argument('--run-records', type=Path, help='Completed-run ledger; missing/conflicting provenance blocks statistical decisions')
-    p.add_argument('--innovation-metadata', type=Path, help='Explicit research/mechanism and G/P/I/H links; never infer them from filenames')
+    p.add_argument('--innovation-metadata', type=Path, help='Declared mechanism links; schema 2 supports paper_ids=[] with pending_search/unknown')
     args = p.parse_args()
     try:
         from record_versions import unwrap

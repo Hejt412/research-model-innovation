@@ -10,6 +10,8 @@
 - 原机制/公式（出处）：{{source_mechanism}}
 - 拟改造公式及符号/形状：{{proposal}}
 - 原计算 → 新计算/信息路径或状态关系/相对现有模块的实质变化：{{structural_change_or_not_applicable}}
+- 完整预测函数与 head 条件：{{baseline_and_candidate_inputs_to_actual_task_output, affine_or_nonlinear_trainable_frozen_shared_constraints, source_locations}}
+- 端到端函数差异审查：{{absorbable_reparameterization_conditions, separable_or_joint_dependency_and_derivation, branch_capacity_vs_interaction, unknowns_or_not_applicable}}
 - 结构可行性核对及状态：{{axes_residuals_inference_information_state_interfaces, evidence_and_pending_or_blocked}}
 - 初始化可学习性静态核对：{{new_parameters_to_actual_loss_path, trainable_and_optimizer_coverage, initial_local_derivatives, detach_frozen_saturation_zero_factor_blockers, evidence_and_unknowns}}
 - 初始 baseline 等价性与学习路径的区别/最小修订：{{initial_output_condition, whole_branch_blocked_or_staged_learning, single_factor_initialization_fix_or_not_needed}}
@@ -18,6 +20,7 @@
 - 实质差异/重复风险/覆盖限制：{{difference, risk, coverage}}
 - 预期收益假设/反例/失败模式：{{hypothesis_and_falsifier}}
 - 机制观测位置/采集条件/预期趋势/否定条件/相关对照：{{observable_diagnostic_and_control}}
+- 预测依赖最小诊断（按需）：{{user_run_legal_combinations_consistent_task_label_semantics_fixed_parameters_mode_rng_state, task_output_or_classification_logits_four_point_difference_tolerance, labels_may_legally_change_finite_zero_not_global_proof, unrun_or_observed_not_benefit_or_not_needed}}
 - 文件/类/函数/真实接口：{{code_plan}}
 - 唯一实验因素/对照/冻结项：{{E-ID, control, change, invariants}}
 - manifest/差异审查/竞争解释及容量对照：{{manifest, audit, alternative_explanations, matched_control}}

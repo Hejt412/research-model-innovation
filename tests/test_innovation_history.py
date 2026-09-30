@@ -112,6 +112,91 @@ class InnovationHistoryTests(unittest.TestCase):
         self.assertEqual(report['interpretation_status'], plain['interpretation_status'])
         self.assertFalse(report['mechanism_benefit_proven'])
 
+    def test_schema2_pending_search_keeps_negative_result_mechanism_identity(self):
+        self.metadata.update(schema_version=2, paper_ids=[], literature_status='pending_search')
+        self.write_metadata()
+        for row in self.rows:
+            if row['experiment_id'] == self.experiment['experiment_id']:
+                row['value'] = .6
+        write_csv(self.csv, self.rows)
+        report = self.report(self.metadata_path)
+        association = report['innovation_link']
+        self.assertEqual(association['status'], 'partially_linked_declared_metadata_review_required')
+        self.assertEqual(association['association_completeness'], 'partial_declared')
+        self.assertEqual(association['literature_status'], 'pending_search')
+        self.assertEqual(association['metadata']['paper_ids'], [])
+        self.assertLess(report['groups'][0]['mean_delta'], 0)
+        self.assertFalse(report['mechanism_benefit_proven'])
+        self.assertTrue(append_history(self.history, report))
+        before = self.history.read_bytes()
+        self.assertFalse(append_history(self.history, report))
+        self.assertEqual(self.history.read_bytes(), before)
+        content = before.decode('utf-8')
+        for identity in ('R-synthetic', 'I-synthetic', 'G-synthetic', 'H-synthetic', 'E-experiment'):
+            self.assertIn(identity, content)
+        self.assertIn('partial_declared', content)
+        self.assertIn('pending_search', content)
+        self.assertNotIn('P-synthetic', content)
+        self.metadata.update(paper_ids=['P-later-declared'], literature_status='references_declared')
+        self.write_metadata()
+        revised = self.report(self.metadata_path)
+        self.assertEqual(revised['innovation_link']['association_completeness'], 'complete_declared')
+        self.assertTrue(append_history(self.history, revised))
+        self.assertTrue(self.history.read_bytes().startswith(before))
+        self.assertIn('追加记录或修订', self.history.read_text(encoding='utf-8'))
+
+    def test_schema2_unknown_is_explicit_and_conflicting_literature_states_rejected(self):
+        record = {**self.metadata, 'schema_version': 2, 'paper_ids': [], 'literature_status': 'unknown'}
+        self.write_metadata(record)
+        association = self.report(self.metadata_path)['innovation_link']
+        self.assertEqual(association['literature_status'], 'unknown')
+        self.assertEqual(association['literature_verification'], 'not_verified_by_tool')
+        invalid = [{**record, 'literature_status': status} for status in
+                   ('references_declared', 'verified', 'complete', '', None, [], True)]
+        invalid.extend([{**record, 'paper_ids': ['P-synthetic'], 'literature_status': status}
+                        for status in ('pending_search', 'unknown')])
+        for value in invalid:
+            with self.subTest(record=value):
+                self.write_metadata(value)
+                with self.assertRaises(ValueError):
+                    self.report(self.metadata_path)
+
+    def test_schema2_unknown_placeholder_ids_are_rejected(self):
+        record = {**self.metadata, 'schema_version': 2, 'literature_status': 'references_declared'}
+        for field in ('research_id', 'innovation_id', 'history_id', 'gap_ids', 'paper_ids'):
+            for unknown in ('unknown', 'UNKNOWN'):
+                with self.subTest(field=field, unknown=unknown):
+                    value = [unknown] if field.endswith('_ids') else unknown
+                    self.write_metadata({**record, field: value})
+                    with self.assertRaises(ValueError):
+                        self.report(self.metadata_path)
+
+    def test_schema1_original_string_id_boundary_remains_readable(self):
+        record = {**self.metadata, 'research_id': 'unknown', 'paper_ids': ['unknown']}
+        self.write_metadata(record)
+        association = self.report(self.metadata_path)['innovation_link']
+        self.assertEqual(association['metadata'], record)
+        self.assertEqual(association['status'], 'linked_declared_metadata_review_required')
+        self.assertEqual(association['literature_verification'], 'not_verified_by_tool')
+        self.write_metadata({**record, 'paper_ids': []})
+        with self.assertRaises(ValueError):
+            self.report(self.metadata_path)
+
+    def test_schema2_partial_links_still_require_source_card_and_exact_experiment_links(self):
+        record = {**self.metadata, 'schema_version': 2, 'paper_ids': [], 'literature_status': 'pending_search'}
+        invalid = [{**record, 'source_card_path': 'missing.md'},
+                   {**record, 'gap_ids': []},
+                   {**record, 'control': record['experiment']},
+                   {**record, 'experiment': {**record['experiment'], 'manifest_sha256': '0' * 64}}]
+        for value in invalid:
+            with self.subTest(record=value):
+                self.write_metadata(value)
+                before = self.history.read_bytes()
+                result = self.cli(metadata=self.metadata_path, history=self.history)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(self.history.read_bytes(), before)
+                self.assertFalse((self.root / 'summary.json').exists())
+
     def test_missing_fields_and_unsupported_versions_are_rejected(self):
         cases = []
         for field in self.metadata:

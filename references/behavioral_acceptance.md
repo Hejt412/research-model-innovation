@@ -62,6 +62,14 @@ python -X utf8 -m unittest discover -s tests -v
 
 在执行前按 [行为版本规范](behavior_versions.md) 冻结来源与输入，执行后复核实际报告并登记摘要。公共 [案例与规则索引](../evals/behavior_case_index.json) 供定向选择，历史通过不自动延续到当前来源；本轮复跑范围及限制见 [复核记录](../evals/structure-choice-acceptance-2026-09-30.md)。
 
+## 完整预测函数与真实文献流程
+
+独立执行 [10预测函数审查](../evals/function_audit/request_10.md)，仅给 Skill、原始请求和该案 fixtures，不预告 [维护者标准](../evals/function_audit/rubric.md)。复核从局部模块一直到实际任务量的数学推导、head 约束、初始化和待用户诊断边界；不运行模型或 backward。
+
+实际联网执行 [11文献迁移流程](../evals/live_literature/request_11.md)，只提供其原始 fixtures，另按 [联网验收范围](live_literature_acceptance.md) 保存检索与来源。该案使用公开合成模型和真实原始文献，不提供候选或预期结论；[维护者标准](../evals/live_literature/rubric.md) 留到报告完成后使用。复核实际 query、原始方法定位、跨领域映射和不限年份的同领域先例，Unknown、拒绝推荐或已有先例均可成为诚实结论。检索验收不证明真实项目效果或全球新颖性。
+
+执行前冻结所有实际使用的来源、工具依赖和输入，执行后读报告原件并追加摘要登记。本轮范围见 [预测函数与文献复核记录](../evals/prediction-literature-acceptance-2026-09-30.md)；未复跑的旧案例保留历史身份。
+
 ## 真实项目验收
 
 按用户给定路径和项目指令执行只读代码/协议/文献分析，不修改模型或训练、不运行项目入口、不导入训练模块、不加载 checkpoint。先通过根目录清单确定范围，主动用 --exclude-dir 排除测试、临时第三方副本及无关结果目录，防止把全仓扫描误作当前模型证据。
